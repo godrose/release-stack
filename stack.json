@@ -1,0 +1,7 @@
+{
+  "feed": "~/Workspace/packages/rc-feed",
+  "repos": [
+    { "name": "Solid", "path": "~/Workspace/Solid", "platform": "any", "tests": [], "packages": [] },
+    { "name": "Attest", "path": "~/Workspace/Attest", "platform": "any", "tests": [], "packages": [] }
+  ]
+}

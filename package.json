@@ -1,0 +1,10 @@
+{
+  "name": "release-stack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Build, test and release the Solid, Attest and LogoFX package stack as rc packages",
+  "bin": { "stack": "src/cli.js" },
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=22" }
+}
