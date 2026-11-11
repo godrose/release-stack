@@ -52,9 +52,13 @@ export function rcVersion(base, now) {
   return `${base}-rc.${runStamp(now)}`;
 }
 
-export async function publishedVersions(id, fetchFn = fetch) {
-  const res = await fetchFn(`https://api.nuget.org/v3-flatcontainer/${id.toLowerCase()}/index.json`);
-  if (res.status === 404) return [];
-  if (!res.ok) throw new Error(`nuget.org returned ${res.status} for ${id}`);
-  return (await res.json()).versions;
+export async function publishedVersions(id, fetchFn = fetch, { retries = 3, delayMs = 500 } = {}) {
+  const url = `https://api.nuget.org/v3-flatcontainer/${id.toLowerCase()}/index.json`;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetchFn(url);
+    if (res.status === 404) return [];
+    if (res.ok) return (await res.json()).versions;
+    if (res.status < 500 || attempt >= retries) throw new Error(`nuget.org returned ${res.status} for ${id}`);
+    await new Promise((r) => setTimeout(r, delayMs * (attempt + 1)));
+  }
 }

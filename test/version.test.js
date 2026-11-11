@@ -53,3 +53,16 @@ test('a legacy four-part version parses and orders after its three-part base', (
   assert.equal(compareSemver('1.0.3.0', '1.0.3'), 0);
   assert.equal(nextStable('2.3.6', ['1.0.3.1', '2.3.6']), '2.3.7');
 });
+
+test('publishedVersions retries transient server errors and still fails when they persist', async () => {
+  let calls = 0;
+  const flaky = async () => (++calls < 3
+    ? { ok: false, status: 504, json: async () => ({}) }
+    : { ok: true, status: 200, json: async () => ({ versions: ['1.0.0'] }) });
+  assert.deepEqual(await publishedVersions('Solid.Core', flaky, { delayMs: 0 }), ['1.0.0']);
+  assert.equal(calls, 3);
+  let always = 0;
+  const down = async () => { always++; return { ok: false, status: 503, json: async () => ({}) }; };
+  await assert.rejects(() => publishedVersions('Solid.Core', down, { delayMs: 0 }), /503/);
+  assert.equal(always, 4, 'one try plus three retries');
+});
