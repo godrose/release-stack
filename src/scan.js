@@ -10,7 +10,7 @@ const git = async (cwd, ...args) => (await run('git', args, { cwd, maxBuffer: 1 
 const SKIP_DIRS = new Set(['obj', 'bin', 'Bin', 'node_modules', '.git']);
 const exists = (p) => access(p).then(() => true, () => false);
 
-async function csprojFiles(dir) {
+export async function csprojFiles(dir) {
   const out = [];
   for (const e of await readdir(dir, { withFileTypes: true })) {
     if (SKIP_DIRS.has(e.name)) continue;
