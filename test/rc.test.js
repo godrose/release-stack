@@ -96,3 +96,15 @@ test('a partial run records the whole stack and a later partial run still pins t
   assert.deepEqual(third.repos[0].upstream, { LibA: { version: first.repos[0].version, fromRecord: second.runId } });
   assert.match(nuspecOf(s.feed, 'LibB.1.0.1-rc.202611111640.nupkg'), /<dependency id="LibA" version="1.0.1-rc.202611111530"/);
 });
+
+test('worktrees left behind by an interrupted run are pruned at the start of the next run', async () => {
+  const { rmSync } = await import('node:fs');
+  const { tmp } = await import('./helpers.js');
+  const s = makeStack();
+  const stale = join(tmp('stale'), 'LibA');
+  git(s.repos.LibA, 'worktree', 'add', '-q', '--detach', stale, 'HEAD');
+  rmSync(stale, { recursive: true, force: true });
+  assert.equal(git(s.repos.LibA, 'worktree', 'list').split('\n').length, 2);
+  await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T15:30:00Z'), published });
+  assert.equal(git(s.repos.LibA, 'worktree', 'list').split('\n').length, 1);
+});
