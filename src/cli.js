@@ -4,9 +4,10 @@ import { dirname, join, resolve } from 'node:path';
 import { loadManifest } from './manifest.js';
 import { rc } from './rc.js';
 import { use, useStable } from './use.js';
+import { drift, formatDrift } from './drift.js';
 
 const defaultManifest = join(dirname(fileURLToPath(import.meta.url)), '../stack.json');
-const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>';
+const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\n       stack drift [--json] [--manifest <file>]';
 
 class UsageError extends Error {}
 
@@ -18,6 +19,7 @@ function parse(argv) {
     else if (a === '--manifest') out.manifest = resolve(argv[++i]);
     else if (a === '--local') out.local = true;
     else if (a === '--stable') out.stable = true;
+    else if (a === '--json') out.json = true;
     else if (a === '--ref') {
       const v = argv[++i] ?? '';
       const at = v.indexOf('=');
@@ -30,9 +32,14 @@ function parse(argv) {
 
 async function main(argv) {
   const [command, ...rest] = argv;
-  if (command !== 'rc' && command !== 'use') throw new UsageError(USAGE);
+  if (!(['rc', 'use', 'drift'].includes(command))) throw new UsageError(USAGE);
   const o = parse(rest);
   const manifestPath = o.manifest ?? defaultManifest;
+  if (command === 'drift') {
+    const result = await drift({ manifestPath });
+    console.log(o.json ? JSON.stringify(result, null, 2) : formatDrift(result));
+    return;
+  }
   if (command === 'rc') {
     const record = await rc({ manifestPath, from: o.from, refs: o.refs, log: (s) => console.log(s) });
     console.log(`rc ${record.runId}: ${record.packages.length} packages in the feed`);

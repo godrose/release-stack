@@ -10,6 +10,7 @@ Design: `docs/superpowers/specs/2026-11-11-rc-stack-design.md`. Plans: `docs/sup
 node src/cli.js rc [--from <repo>] [--ref <repo>=<ref>]...   build, test and pack the stack into the rc feed
 node src/cli.js use --local <consumer>                         point a consumer at the latest rc
 node src/cli.js use --stable <consumer>                        put the consumer back
+node src/cli.js drift [--json]                                 table of every repo against the current stack (read only)
 ```
 
 Environment: `DOTNET_ROOT=~/.dotnet-arm64 PATH=~/.dotnet-arm64:$PATH`. The rc feed is the `feed` in `stack.json`. `rc` builds from git worktrees and refuses repos with uncommitted changes to tracked files.
@@ -31,3 +32,4 @@ node src/cli.js use --stable ~/Workspace/bdd-netcore
 - Windows-only packages (`Solid.Common` platform variants) are skipped on macOS.
 - The manifest names `Solid.IoC.Adapters.Reqnroll` and `Attest.Testing.Reqnroll`, which exist only on the PR branches until Solid#104 and Attest#119 merge. `rc --ref Solid=master` fails with "project not found" until then.
 - A partial run (`rc --from X`) records the whole stack, carrying over the packages it did not rebuild, so `use` and later partial runs stay consistent.
+- `drift` reads the manifest repos plus every git repo under the `scan` roots. The current stack is the latest rc record per family, or the latest stable of the family `anchor` on nuget.org when the record has none. Status: `current` (aligned and equal to the stack), `lagging`, `unaligned` (more than one own version, or more than one pinned version of a family), `none` (no family pins). A family whose stack version is unknown shows `?`.
