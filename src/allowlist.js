@@ -27,3 +27,11 @@ export function evaluate({ failed, entries, now }) {
   const unexpected = failed.filter((t) => !live.some((e) => e.test === t));
   return { unexpected, allowed, expired, stale };
 }
+
+export function complete(output) {
+  const runs = (output.match(/^Test run for /gm) ?? []).length;
+  const totals = (output.match(/^(Failed|Passed)!\s+- Failed:\s+\d+/gm) ?? []).length;
+  if (totals === 0 || totals < runs) return false;
+  if (/Test Run Aborted|The active test run was aborted/.test(output)) return false;
+  return !/: error [A-Z]+\d+:/.test(output);
+}

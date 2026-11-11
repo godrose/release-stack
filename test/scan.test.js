@@ -68,3 +68,13 @@ test('listRepos returns manifest repos and scanned children that are git repos, 
   assert.deepEqual(repos.map((r) => r.name), ['child-by-manifest', 'LibA']);
   assert.equal(repos.filter((r) => r.path === child).length, 1);
 });
+
+test('a range or two-part version does not break the sort when a family has two values', async () => {
+  const dir = makeRepo({
+    'a/a.csproj': proj('2.1', '<PackageReference Include="Solid.Core" Version="2.3.*" />'),
+    'b/b.csproj': proj('2.2.7', '<PackageReference Include="Solid.Core" Version="2.3.6" />'),
+  });
+  const r = await scanRepo(dir, families);
+  assert.deepEqual(r.pins.Solid.sort(), ['2.3.*', '2.3.6']);
+  assert.deepEqual(r.own.sort(), ['2.1', '2.2.7']);
+});

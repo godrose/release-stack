@@ -21,7 +21,13 @@ export async function csprojFiles(dir) {
   return out;
 }
 
-const byVersion = (a, b) => compareSemver(a, b);
+const byVersion = (a, b) => {
+  try {
+    return compareSemver(a, b);
+  } catch {
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+};
 const familyOf = (id, families) => Object.entries(families).find(([, f]) => id.startsWith(f.prefix))?.[0] ?? null;
 
 export async function scanRepo(repoPath, families) {

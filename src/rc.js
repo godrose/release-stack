@@ -9,7 +9,7 @@ import { assertClean, createWorktree, removeWorktree, pruneWorktrees, currentRef
 import { publishStaging, FeedConflictError } from './feed.js';
 import { writeRecord, latestRecord, hasRecord } from './record.js';
 import { resolvePin } from './pins.js';
-import { AllowlistError, parseFailures, hasSummary, evaluate } from './allowlist.js';
+import { AllowlistError, parseFailures, complete, evaluate } from './allowlist.js';
 import { nextStable, rcVersion, runStamp, publishedVersions } from './version.js';
 import {
   getProjectVersion, setProjectVersion, hasProjectVersion, setPackageRefVersion, listPackageRefs,
@@ -161,7 +161,7 @@ export async function rc(opts) {
         } catch (e) {
           const out = `${e.stdout ?? ''}${e.stderr ?? ''}`;
           const failed = parseFailures(out);
-          if (!failed.length || !hasSummary(out) || evaluate({ failed, entries: repo.knownFailing, now }).unexpected.length) throw e;
+          if (!failed.length || !complete(out) || evaluate({ failed, entries: repo.knownFailing, now }).unexpected.length) throw e;
           failedHere.push(...failed);
         }
       }
