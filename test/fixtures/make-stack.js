@@ -11,7 +11,7 @@ const XUNIT = `<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11
 
 const dotnet = (cwd, ...args) => execFileSync('dotnet', args, { cwd, stdio: 'pipe' });
 
-function lib({ name, body, pin, failing }) {
+function lib({ name, body, pin, failing, infra }) {
   const files = {
     [`src/${name}/${name}.csproj`]: `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><Version>1.0.0</Version></PropertyGroup>
@@ -24,23 +24,31 @@ function lib({ name, body, pin, failing }) {
   <ItemGroup>
     ${XUNIT}
     <ProjectReference Include="..\\${name}\\${name}.csproj" />
+    ${infra ? `<ProjectReference Include="..\\${name}.TestInfra\\${name}.TestInfra.csproj" />` : ''}
   </ItemGroup>
 </Project>
 `,
     [`src/${name}.Tests/Tests.cs`]: `using Xunit;
-public class Tests { [Fact] public void Works() => Assert.Equal(${failing ? 'false' : 'true'}, true); }
+public class Tests { [Fact] public void Works() => Assert.Equal(${failing ? 'false' : 'true'}, ${infra ? `${name}.TestInfra.Helper.Truth()` : 'true'}); }
 `,
   };
+  if (infra) {
+    files[`src/${name}.TestInfra/${name}.TestInfra.csproj`] = `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
+</Project>
+`;
+    files[`src/${name}.TestInfra/Helper.cs`] = `namespace ${name}.TestInfra { public static class Helper { public static bool Truth() => true; } }\n`;
+  }
   const dir = makeRepo(files);
   dotnet(join(dir, 'src'), 'new', 'sln', '-n', name, '--format', 'sln');
-  dotnet(join(dir, 'src'), 'sln', `${name}.sln`, 'add', `${name}/${name}.csproj`, `${name}.Tests/${name}.Tests.csproj`);
+  dotnet(join(dir, 'src'), 'sln', `${name}.sln`, 'add', `${name}/${name}.csproj`, `${name}.Tests/${name}.Tests.csproj`, ...(infra ? [`${name}.TestInfra/${name}.TestInfra.csproj`] : []));
   git(dir, 'add', '-A');
   git(dir, 'commit', '-q', '-m', 'solution');
   return dir;
 }
 
 export function makeStack({ failingB = false } = {}) {
-  const a = lib({ name: 'LibA', body: 'namespace LibA { public static class A { public static int One() => 1; } }\n', failing: false });
+  const a = lib({ name: 'LibA', body: 'namespace LibA { public static class A { public static int One() => 1; } }\n', failing: false, infra: true });
   const b = lib({ name: 'LibB', body: 'namespace LibB { public static class B { public static int Two() => 2; } }\n', pin: 'LibA', failing: failingB });
   put(b, 'devops/pack/LibB/contents/LibB.nuspec', `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">

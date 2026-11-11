@@ -8,6 +8,7 @@ import { buildGraph } from './graph.js';
 import { assertClean, createWorktree, removeWorktree, currentRef } from './worktree.js';
 import { publishStaging, FeedConflictError } from './feed.js';
 import { writeRecord, latestRecord, hasRecord } from './record.js';
+import { resolvePin } from './pins.js';
 import { nextStable, rcVersion, runStamp, publishedVersions } from './version.js';
 import {
   getProjectVersion, setProjectVersion, setPackageRefVersion, listPackageRefs,
@@ -110,14 +111,11 @@ export async function rc(opts) {
       log(`${repo.name}: ${version}`);
 
       const upstream = {};
-      const pinFor = (id) => {
-        if (builtVersion.has(id)) return builtVersion.get(id);
-        const owner = idOwner.get(id);
-        if (!owner || rebuilt.has(owner.name)) return null;
-        const fromRecord = latest?.packages.find((p) => p.id === id);
-        if (!fromRecord) return null;
-        upstream[owner.name] = { version: fromRecord.version, fromRecord: latest.runId };
-        return fromRecord.version;
+      const idToOwner = new Map([...idOwner].map(([id, r]) => [id, r.name]));
+      const pinFor = (id, kind) => {
+        const pin = resolvePin({ id, repo: repo.name, kind, owners: idToOwner, built: builtVersion, rebuiltRepos: new Set(rebuilt.keys()), latest });
+        if (pin?.fromRecord) upstream[pin.owner] = { version: pin.version, fromRecord: pin.fromRecord };
+        return pin?.version ?? null;
       };
 
       const packageProjects = new Set(buildPackages.map((p) => join(wt.path, p.project)));
@@ -126,7 +124,7 @@ export async function rc(opts) {
         let xml = before;
         if (packageProjects.has(file)) xml = setProjectVersion(xml, version);
         for (const { id } of listPackageRefs(xml)) {
-          const pin = idOwner.has(id) ? pinFor(id) : null;
+          const pin = pinFor(id, 'csproj');
           if (pin) xml = setPackageRefVersion(xml, id, pin).xml;
         }
         if (xml !== before) await writeFile(file, xml);
@@ -154,7 +152,7 @@ export async function rc(opts) {
           let xml = await readFile(join(wt.path, pkg.nuspec), 'utf8');
           xml = setNuspecVersion(xml, version);
           for (const dep of xml.matchAll(/<dependency\b[^>]*\bid="([^"]+)"/g)) {
-            const pin = idOwner.has(dep[1]) ? pinFor(dep[1]) : null;
+            const pin = pinFor(dep[1], 'nuspec');
             if (pin) xml = setNuspecDependency(xml, dep[1], pin).xml;
           }
           const nuspecFile = join(dir, basename(pkg.nuspec));
