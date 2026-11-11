@@ -26,3 +26,17 @@ test('rc with an unknown --ref format exits 1 naming the argument', () => {
   assert.equal(r.status, 1);
   assert.match(r.stderr, /--ref expects <repo>=<ref>/);
 });
+
+test('drift prints the table, and --json prints the rows, without touching the repos', async () => {
+  const { writeFileSync } = await import('node:fs');
+  const { makeRepo } = await import('./helpers.js');
+  const repo = makeRepo({ 'a/a.csproj': '<Project><PropertyGroup><Version>1.0.0</Version></PropertyGroup><ItemGroup><PackageReference Include="Solid.Core" Version="2.3.2" /></ItemGroup></Project>\n' });
+  const manifest = join(tmp('m'), 'stack.json');
+  writeFileSync(manifest, JSON.stringify({ feed: tmp('feed'), families: { Solid: { prefix: 'Solid.' } }, repos: [{ name: 'Lib', path: repo, platform: 'any', solution: 'x.sln', tests: [], packages: [] }] }));
+  const table = run('drift', '--manifest', manifest);
+  assert.equal(table.status, 0);
+  assert.match(table.stdout, /^stack: Solid \?/);
+  assert.match(table.stdout, /Lib\s+main\s+0\s+1\.0\.0\s+2\.3\.2\s+lagging/);
+  const json = JSON.parse(run('drift', '--json', '--manifest', manifest).stdout);
+  assert.equal(json.rows[0].status, 'lagging');
+});
