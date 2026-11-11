@@ -74,3 +74,10 @@ test('a windows-only package whose project file does not exist here is skipped, 
   const rec = await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T18:00:00Z'), published });
   assert.deepEqual(rec.packages.map((p) => p.id).sort(), ['LibA', 'LibB']);
 });
+
+test('buildArgs passes the slnf relative to the repo root', async () => {
+  const { buildArgs } = await import('../src/rc.js');
+  const args = buildArgs('src/rc-stack.slnf', ['/a', '/b']);
+  assert.equal(args[1], 'src/rc-stack.slnf');
+  assert.ok(args.includes('-p:RestoreAdditionalProjectSources=/a%3B/b'));
+});

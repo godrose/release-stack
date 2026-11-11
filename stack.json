@@ -15,8 +15,7 @@
         "src/Solid.IoC.Registration.Specs/Solid.IoC.Registration.Specs.csproj",
         "src/Solid.Practices.Composition.Container.Specs/Solid.Practices.Composition.Container.Specs.csproj",
         "src/Solid.Practices.Composition.Specs/Solid.Practices.Composition.Specs.csproj",
-        "src/Solid.Practices.Middleware.Specs/Solid.Practices.Middleware.Specs.csproj",
-        "src/Solid.Practices.Composition.IntegrationTests.App/Solid.Practices.Composition.IntegrationTests.App.csproj"
+        "src/Solid.Practices.Middleware.Specs/Solid.Practices.Middleware.Specs.csproj"
       ],
       "packages": [
         {
@@ -72,7 +71,15 @@
         {
           "id": "Solid.Common.Core",
           "project": "src/Solid.Common/Solid.Common.csproj",
-          "pack": "dotnet"
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.common.core/contents/Solid.Common.Core.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Common.*"
+            }
+          ]
         },
         {
           "id": "Solid.Core",
@@ -211,8 +218,7 @@
         "src/Attest.Fake.Setup.Specs/Attest.Fake.Setup.Specs.csproj",
         "src/Attest.Testing.Core.Specs/Attest.Testing.Core.Specs.csproj",
         "src/Attest.Testing.SpecFlow.Specs/Attest.Testing.SpecFlow.Specs.csproj",
-        "src/Attest.Testing.Reqnroll.Specs/Attest.Testing.Reqnroll.Specs.csproj",
-        "src/Attest.Fake.FakeItEasy.Tests/Attest.Fake.FakeItEasy.Tests.csproj"
+        "src/Attest.Testing.Reqnroll.Specs/Attest.Testing.Reqnroll.Specs.csproj"
       ],
       "packages": [
         {

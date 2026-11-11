@@ -46,6 +46,8 @@ async function csprojFiles(dir) {
   return out;
 }
 
+export const buildArgs = (slnfRel, sources) => ['build', slnfRel, '-c', 'Release', `-p:RestoreAdditionalProjectSources=${sources.join('%3B')}`];
+
 const globToRegex = (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
 
 export async function rc(opts) {
@@ -134,9 +136,8 @@ export async function rc(opts) {
       const slnf = join(dirname(slnPath), 'rc-stack.slnf');
       const inSln = [...buildPackages.map((p) => p.project), ...repo.tests].map((p) => relative(dirname(slnPath), join(wt.path, p)).replace(/\//g, '\\'));
       await writeFile(slnf, JSON.stringify({ solution: { path: basename(slnPath), projects: [...new Set(inSln)] } }, null, 2));
-      const restoreSources = `-p:RestoreAdditionalProjectSources=${sources.join('%3B')}`;
       log(`${repo.name}: build`);
-      await run(wt.path, 'dotnet', ['build', slnf, '-c', 'Release', restoreSources]);
+      await run(wt.path, 'dotnet', buildArgs(relative(wt.path, slnf).replace(/\\/g, '/'), sources));
       for (const t of repo.tests) {
         log(`${repo.name}: test ${t}`);
         await run(wt.path, 'dotnet', ['test', join(wt.path, t), '-c', 'Release', '--no-build']);
@@ -177,7 +178,11 @@ export async function rc(opts) {
     await writeRecord(manifest.feed, record);
     return record;
   } finally {
-    for (const w of worktrees) await removeWorktree(w.repo.path, w.path).catch(() => {});
-    await rm(work, { recursive: true, force: true });
+    if (process.env.RC_STACK_KEEP) {
+      log(`RC_STACK_KEEP set: leaving ${work} and its worktrees in place`);
+    } else {
+      for (const w of worktrees) await removeWorktree(w.repo.path, w.path).catch(() => {});
+      await rm(work, { recursive: true, force: true });
+    }
   }
 }
