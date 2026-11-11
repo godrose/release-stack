@@ -1,7 +1,376 @@
 {
   "feed": "~/Workspace/packages/rc-feed",
   "repos": [
-    { "name": "Solid", "path": "~/Workspace/Solid", "platform": "any", "tests": [], "packages": [] },
-    { "name": "Attest", "path": "~/Workspace/Attest", "platform": "any", "tests": [], "packages": [] }
+    {
+      "name": "Solid",
+      "path": "~/Workspace/Solid",
+      "platform": "any",
+      "solution": "src/Solid.sln",
+      "tests": [
+        "src/Solid.Bootstrapping.Specs/Solid.Bootstrapping.Specs.csproj",
+        "src/Solid.Extensibility.Specs/Solid.Extensibility.Specs.csproj",
+        "src/Solid.Core.Tests/Solid.Core.Tests.csproj",
+        "src/Solid.IoC.Adapters.BoDi.Specs/Solid.IoC.Adapters.BoDi.Specs.csproj",
+        "src/Solid.IoC.Adapters.Reqnroll.Specs/Solid.IoC.Adapters.Reqnroll.Specs.csproj",
+        "src/Solid.IoC.Registration.Specs/Solid.IoC.Registration.Specs.csproj",
+        "src/Solid.Practices.Composition.Container.Specs/Solid.Practices.Composition.Container.Specs.csproj",
+        "src/Solid.Practices.Composition.Specs/Solid.Practices.Composition.Specs.csproj",
+        "src/Solid.Practices.Middleware.Specs/Solid.Practices.Middleware.Specs.csproj",
+        "src/Solid.Practices.Composition.IntegrationTests.App/Solid.Practices.Composition.IntegrationTests.App.csproj"
+      ],
+      "packages": [
+        {
+          "id": "Solid.IoC.Adapters.Reqnroll",
+          "project": "src/Solid.IoC.Adapters.Reqnroll/Solid.IoC.Adapters.Reqnroll.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Solid.IoC.Adapters.Reqnroll/contents/Solid.IoC.Adapters.Reqnroll.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.IoC.Adapters.Reqnroll.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.Bootstrapping",
+          "project": "src/Solid.Bootstrapping/Solid.Bootstrapping.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.bootstrapping/contents/Solid.Bootstrapping.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Bootstrapping.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.Common",
+          "project": "src/Solid.Common.Platform/Solid.Common.Platform.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.common/contents/Solid.Common.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net461",
+              "glob": "Solid.Common.Platform.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "Solid.Common.Platform.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "Solid.Common.Platform.*"
+            }
+          ],
+          "platform": "windows"
+        },
+        {
+          "id": "Solid.Common.Core",
+          "project": "src/Solid.Common/Solid.Common.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Core",
+          "project": "src/Solid.Core/Solid.Core.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Extensibility",
+          "project": "src/Solid.Extensibility/Solid.Extensibility.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.extensibility/contents/Solid.Extensibility.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Extensibility.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.IoC.Adapters.BoDi",
+          "project": "src/Solid.IoC.Adapters.BoDi/Solid.IoC.Adapters.BoDi.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.ioc.adapters.bodi/contents/Solid.IoC.Adapters.BoDi.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.IoC.Adapters.BoDi.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.IoC.Registration",
+          "project": "src/Solid.IoC.Registration/Solid.IoC.Registration.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Patterns.Builder",
+          "project": "src/Solid.Patterns.Builder/Solid.Patterns.Builder.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Patterns.ChainOfResponsibility",
+          "project": "src/Solid.Patterns.ChainOfResponsibility/Solid.Patterns.ChainOfResponsibility.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Patterns.Memento",
+          "project": "src/Solid.Patterns.Memento/Solid.Patterns.Memento.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Patterns.Visitor",
+          "project": "src/Solid.Patterns.Visitor/Solid.Patterns.Visitor.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Practices.Composition.Client",
+          "project": "src/Solid.Practices.Composition.Client/Solid.Practices.Composition.Client.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.practices.composition.client/contents/Solid.Practices.Composition.Client.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Practices.Composition.Client.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.Practices.Composition.Core",
+          "project": "src/Solid.Practices.Composition/Solid.Practices.Composition.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.practices.composition.core/contents/Solid.Practices.Composition.Core.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Practices.Composition.dll"
+            },
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Practices.Composition.Contracts.*"
+            },
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Practices.Composition.Container.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.Practices.Composition.Web",
+          "project": "src/Solid.Practices.Composition.Web/Solid.Practices.Composition.Web.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/solid.practices.composition.web/contents/Solid.Practices.Composition.Web.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Solid.Practices.Composition.Web.*"
+            }
+          ]
+        },
+        {
+          "id": "Solid.Practices.IoC",
+          "project": "src/Solid.Practices.IoC/Solid.Practices.IoC.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Practices.Middleware",
+          "project": "src/Solid.Practices.Middleware/Solid.Practices.Middleware.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Practices.Modularity",
+          "project": "src/Solid.Practices.Modularity/Solid.Practices.Modularity.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Solid.Practices.Scheduling",
+          "project": "src/Solid.Practices.Scheduling/Solid.Practices.Scheduling.csproj",
+          "pack": "dotnet"
+        }
+      ]
+    },
+    {
+      "name": "Attest",
+      "path": "~/Workspace/Attest",
+      "platform": "any",
+      "solution": "src/Attest.sln",
+      "tests": [
+        "src/Attest.Fake.Moq.Specs/Attest.Fake.Moq.Specs.csproj",
+        "src/Attest.Fake.Setup.Specs/Attest.Fake.Setup.Specs.csproj",
+        "src/Attest.Testing.Core.Specs/Attest.Testing.Core.Specs.csproj",
+        "src/Attest.Testing.SpecFlow.Specs/Attest.Testing.SpecFlow.Specs.csproj",
+        "src/Attest.Testing.Reqnroll.Specs/Attest.Testing.Reqnroll.Specs.csproj",
+        "src/Attest.Fake.FakeItEasy.Tests/Attest.Fake.FakeItEasy.Tests.csproj"
+      ],
+      "packages": [
+        {
+          "id": "Attest.Fake.Builders",
+          "project": "src/Attest.Fake.Builders/Attest.Fake.Builders.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Fake.Builders/contents/Attest.Fake.Builders.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Fake.Builders.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Fake.Conventions",
+          "project": "src/Attest.Fake.Conventions/Attest.Fake.Conventions.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Attest.Fake.Core",
+          "project": "src/Attest.Fake.Core/Attest.Fake.Core.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Attest.Fake.Data",
+          "project": "src/Attest.Fake.Data/Attest.Fake.Data.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Fake.Data/contents/Attest.Fake.Data.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Fake.Data.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Fake.LightMock",
+          "project": "src/Attest.Fake.LightMock/Attest.Fake.LightMock.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Fake.LightMock/contents/Attest.Fake.LightMock.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Fake.LightMock.*"
+            },
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LightMock.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Fake.Moq",
+          "project": "src/Attest.Fake.Moq/Attest.Fake.Moq.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Attest.Fake.Registration",
+          "project": "src/Attest.Fake.Registration/Attest.Fake.Registration.csproj",
+          "pack": "dotnet"
+        },
+        {
+          "id": "Attest.Fake.Setup",
+          "project": "src/Attest.Fake.Setup/Attest.Fake.Setup.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Fake.Setup/contents/Attest.Fake.Setup.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Fake.Setup.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Testing.Contracts",
+          "project": "src/Attest.Testing.Contracts/Attest.Testing.Contracts.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Testing.Contracts/contents/Attest.Testing.Contracts.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Testing.Contracts.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Tests.Core",
+          "project": "src/Attest.Testing.Core/Attest.Testing.Core.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Tests.Core/contents/Attest.Tests.Core.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Testing.Core.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Tests.NUnit",
+          "project": "src/Attest.Testing.NUnit/Attest.Testing.NUnit.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Tests.NUnit/contents/Attest.Tests.NUnit.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Testing.NUnit.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Tests.Reqnroll",
+          "project": "src/Attest.Testing.Reqnroll/Attest.Testing.Reqnroll.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Tests.Reqnroll/contents/Attest.Tests.Reqnroll.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Testing.Reqnroll.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Tests.SpecFlow",
+          "project": "src/Attest.Testing.SpecFlow/Attest.Testing.SpecFlow.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Tests.SpecFlow/contents/Attest.Tests.SpecFlow.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Testing.SpecFlow.*"
+            }
+          ]
+        },
+        {
+          "id": "Attest.Tests.xUnit",
+          "project": "src/Attest.Testing.xUnit/Attest.Testing.xUnit.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/Attest.Tests.xUnit/contents/Attest.Tests.xUnit.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "Attest.Testing.xUnit.*"
+            }
+          ]
+        }
+      ]
+    }
   ]
 }

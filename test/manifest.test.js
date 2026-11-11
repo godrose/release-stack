@@ -15,10 +15,10 @@ function write(obj) {
 const good = () => ({
   feed: '~/feed',
   repos: [
-    { name: 'Solid', path: '../Solid', platform: 'any', tests: ['src/A/A.csproj'],
+    { name: 'Solid', path: '../Solid', platform: 'any', solution: 'src/Solid.sln', tests: ['src/A/A.csproj'],
       packages: [{ id: 'Solid.Core', project: 'src/Solid.Core/Solid.Core.csproj', pack: 'dotnet' }] },
-    { name: 'Attest', path: '../Attest', platform: 'any', tests: [],
-      packages: [{ id: 'Attest.Tests.Core', project: 'src/X/X.csproj', pack: 'nuspec', nuspec: 'devops/x.nuspec' }] },
+    { name: 'Attest', path: '../Attest', platform: 'any', solution: 'src/Attest.sln', tests: [],
+      packages: [{ id: 'Attest.Tests.Core', project: 'src/X/X.csproj', pack: 'nuspec', nuspec: 'devops/x.nuspec', lib: [{ dir: 'src/Bin/netstandard/Release', tfm: 'netstandard2.0', glob: 'X.*' }] }] },
   ],
 });
 
@@ -50,4 +50,30 @@ test('pack nuspec without a nuspec path is rejected', () => {
   delete bad.repos[1].packages[0].nuspec;
   assert.throws(() => loadManifest(write(bad)), (e) =>
     e instanceof ManifestError && e.message.includes('repos[1].packages[0].nuspec'));
+});
+
+test('a repo without a solution is rejected', () => {
+  const bad = good();
+  delete bad.repos[0].solution;
+  assert.throws(() => loadManifest(write(bad)), (e) =>
+    e instanceof ManifestError && e.message.includes('repos[0].solution'));
+});
+
+test('pack nuspec without lib rules is rejected', () => {
+  const bad = good();
+  delete bad.repos[1].packages[0].lib;
+  assert.throws(() => loadManifest(write(bad)), (e) =>
+    e instanceof ManifestError && e.message.includes('repos[1].packages[0].lib'));
+});
+
+test('a package platform defaults to the repo platform and rejects unknown values', () => {
+  const m = good();
+  m.repos[0].packages[0].platform = 'windows';
+  const loaded = loadManifest(write(m));
+  assert.equal(loaded.repos[0].packages[0].platform, 'windows');
+  assert.equal(loaded.repos[1].packages[0].platform, 'any');
+  const bad = good();
+  bad.repos[0].packages[0].platform = 'linux';
+  assert.throws(() => loadManifest(write(bad)), (e) =>
+    e instanceof ManifestError && e.message.includes('repos[0].packages[0].platform'));
 });
