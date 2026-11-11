@@ -174,7 +174,8 @@ export async function rc(opts) {
     }
 
     await publishStaging(staging, manifest.feed);
-    const record = { runId, createdAt: now.toISOString(), origin: 'local', repos: repoRecords, packages: packed };
+    const carried = (latest?.packages ?? []).filter((p) => idOwner.has(p.id) && !rebuilt.has(idOwner.get(p.id).name));
+    const record = { runId, createdAt: now.toISOString(), origin: 'local', repos: repoRecords, packages: [...packed, ...carried] };
     await writeRecord(manifest.feed, record);
     return record;
   } finally {
