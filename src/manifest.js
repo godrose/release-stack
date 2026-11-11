@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
@@ -16,6 +16,12 @@ function expand(p, baseDir) {
 
 function need(cond, field, what) {
   if (!cond) throw new ManifestError(`${field}: ${what}`);
+}
+
+function realDate(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().startsWith(s);
 }
 
 export function loadManifest(file) {
@@ -46,7 +52,33 @@ export function loadManifest(file) {
       seen.set(p.id, r.name);
       return { ...p, platform: p.platform ?? r.platform };
     });
-    return { name: r.name, path: expand(r.path, baseDir), platform: r.platform, solution: r.solution, tests: [...r.tests], packages };
+    const known = r.knownFailing ?? [];
+    need(Array.isArray(known), `${f}.knownFailing`, 'must be an array');
+    const knownFailing = known.map((k, j) => {
+      const kf = `${f}.knownFailing[${j}]`;
+      need(typeof k.test === 'string' && k.test, `${kf}.test`, 'must be a non-empty string');
+      need(typeof k.owner === 'string' && k.owner, `${kf}.owner`, 'must be a non-empty string');
+      need(typeof k.expires === 'string' && realDate(k.expires), `${kf}.expires`, 'must be a real date as YYYY-MM-DD');
+      return { test: k.test, owner: k.owner, expires: k.expires };
+    });
+    return { name: r.name, path: expand(r.path, baseDir), platform: r.platform, solution: r.solution, tests: [...r.tests], packages, knownFailing };
   });
-  return { feed: expand(raw.feed, baseDir), repos };
+  const families = {};
+  const prefixes = new Map();
+  for (const [name, fam] of Object.entries(raw.families ?? {})) {
+    need(fam && typeof fam.prefix === 'string' && fam.prefix, `families.${name}.prefix`, 'must be a non-empty string');
+    need(fam.anchor === undefined || (typeof fam.anchor === 'string' && fam.anchor), `families.${name}.anchor`, 'must be a non-empty string');
+    need(!prefixes.has(fam.prefix), `families.${name}.prefix`, `duplicate prefix ${fam.prefix} (also in ${prefixes.get(fam.prefix)})`);
+    prefixes.set(fam.prefix, name);
+    families[name] = { prefix: fam.prefix, ...(fam.anchor ? { anchor: fam.anchor } : {}) };
+  }
+  const rawScan = raw.scan ?? [];
+  need(Array.isArray(rawScan), 'scan', 'must be an array');
+  const scan = rawScan.map((p, i) => {
+    need(typeof p === 'string', `scan[${i}]`, 'must be a string');
+    const abs = expand(p, baseDir);
+    need(existsSync(abs), `scan[${i}]`, `${abs} does not exist`);
+    return abs;
+  });
+  return { feed: expand(raw.feed, baseDir), repos, families, scan };
 }

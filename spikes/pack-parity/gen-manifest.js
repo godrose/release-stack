@@ -11,7 +11,12 @@ const repos = [
   { name: 'Attest', solution: 'src/Attest.sln' },
 ];
 const SKIP_TESTS = ['IntegrationTests.App', 'Attest.Fake.FakeItEasy.Tests'];
-const manifest = { feed: '~/Workspace/packages/rc-feed', repos: [] };
+const manifest = {
+  feed: '~/Workspace/packages/rc-feed',
+  families: { Solid: { prefix: 'Solid.' }, Attest: { prefix: 'Attest.' }, LogoFX: { prefix: 'LogoFX.', anchor: 'LogoFX.Core' } },
+  scan: ['~/Workspace/logofx-project'],
+  repos: [],
+};
 for (const r of repos) {
   const testAll = readFileSync(join(homedir(), 'Workspace', r.name, 'devops/test/test-all.bat'), 'utf8');
   const tests = [...testAll.matchAll(/call test-(?:specs|tests)-single\.bat\s+(\S+)/g)].map((m) => `src/${m[1]}/${m[1]}.csproj`).filter((p) => !SKIP_TESTS.some((s) => p.includes(s)));
