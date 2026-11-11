@@ -1,16 +1,23 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, lstat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { loadManifest } from './manifest.js';
 import { latestRecord } from './record.js';
-import { listRepos, csprojFiles } from './scan.js';
+import { listRepos } from './scan.js';
 import { assertClean } from './worktree.js';
-import { parseFailures, hasSummary } from './allowlist.js';
-import { listPackageRefs, setPackageRefVersion } from './xml-edit.js';
+import { parseFailures, complete } from './allowlist.js';
+import { listPackageRefs, listVersionlessRefs, setPackageRefVersion } from './xml-edit.js';
 
 const exec = promisify(execFile);
+
+async function trackedFiles(repoPath) {
+  const out = (await exec('git', ['ls-files', '-z', '--', '*.csproj', '*.props', '*.targets'], { cwd: repoPath, maxBuffer: 1 << 26 })).stdout;
+  const files = [];
+  for (const f of out.split('\0').filter(Boolean)) if (!(await lstat(join(repoPath, f))).isSymbolicLink()) files.push(f);
+  return files;
+}
 
 export function defaultSln(repoPath) {
   const found = [];
@@ -37,10 +44,10 @@ export const dotnetTests = (sln) => async (repoPath, feedDir) => {
   } catch (e) {
     out = `${e.stdout ?? ''}${e.stderr ?? ''}`;
   }
-  return { built: hasSummary(out), failed: parseFailures(out) };
+  return { built: complete(out), failed: parseFailures(out) };
 };
 
-export async function bump({ manifestPath, repo, sln, runTests }) {
+export async function bump({ manifestPath, repo, sln, runTests, allowNoBaseline = false }) {
   const manifest = loadManifest(manifestPath);
   const repos = await listRepos(manifest);
   const target = repos.find((r) => r.name === repo);
@@ -53,29 +60,43 @@ export async function bump({ manifestPath, repo, sln, runTests }) {
   const versions = new Map(record.packages.map((p) => [p.id.toLowerCase(), p.version]));
   const inFamily = (id) => Object.values(manifest.families).some((f) => id.startsWith(f.prefix));
   const baseline = await run(target.path, manifest.feed);
+  if (!baseline.built && !allowNoBaseline) {
+    throw new Error(`${repo}: the baseline run gave no test result (build or test host failed), nothing changed. Use --allow-no-baseline (option allowNoBaseline) to bump anyway`);
+  }
 
   const changed = [];
   const unaligned = [];
-  for (const path of await csprojFiles(target.path)) {
-    const file = relative(target.path, path).split('\\').join('/');
+  const unresolved = [];
+  const noteUnresolved = (file, id, reason) => {
+    if (!unresolved.some((u) => u.file === file && u.id === id)) unresolved.push({ file, id, reason });
+  };
+  for (const file of (await trackedFiles(target.path)).sort()) {
+    const path = join(target.path, file);
     const before = await readFile(path, 'utf8');
     let xml = before;
-    const seen = new Set();
-    for (const { id, version } of listPackageRefs(before)) {
-      if (seen.has(id.toLowerCase()) || version.startsWith('$(')) continue;
-      seen.add(id.toLowerCase());
-      const to = versions.get(id.toLowerCase());
-      if (to === undefined) {
-        if (inFamily(id)) unaligned.push({ file, id, version });
-        continue;
+    if (file.endsWith('.csproj')) {
+      for (const id of listVersionlessRefs(before)) if (inFamily(id)) noteUnresolved(file, id, 'no version on the reference');
+      for (const m of before.matchAll(/<PackageReference\b[^>]*\bUpdate\s*=\s*"([^"]+)"/g)) if (inFamily(m[1])) noteUnresolved(file, m[1], 'Update item');
+      const seen = new Set();
+      for (const { id, version } of listPackageRefs(before)) {
+        if (inFamily(id) && version.startsWith('$(')) noteUnresolved(file, id, 'version is a property');
+        if (seen.has(id.toLowerCase()) || version.startsWith('$(')) continue;
+        seen.add(id.toLowerCase());
+        const to = versions.get(id.toLowerCase());
+        if (to === undefined) {
+          if (inFamily(id)) unaligned.push({ file, id, version });
+          continue;
+        }
+        const r = setPackageRefVersion(xml, id, to, { skipProperty: true });
+        if (r.old.some((v) => v !== to)) changed.push({ file, id, old: r.old, new: to });
+        xml = r.xml;
       }
-      const r = setPackageRefVersion(xml, id, to);
-      if (r.old.some((v) => v !== to)) changed.push({ file, id, old: r.old, new: to });
-      xml = r.xml;
+    } else {
+      for (const m of before.matchAll(/<PackageVersion\b[^>]*\bInclude\s*=\s*"([^"]+)"/g)) if (inFamily(m[1])) noteUnresolved(file, m[1], 'central package version');
     }
     if (xml !== before) await writeFile(path, xml);
   }
 
   const after = await run(target.path, manifest.feed);
-  return { repo, unaligned, changed, baseline, after, ...verdictOf(baseline, after) };
+  return { repo, unaligned, unresolved, changed, baseline, after, ...verdictOf(baseline, after) };
 }

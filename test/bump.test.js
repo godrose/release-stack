@@ -161,3 +161,53 @@ test('defaultSln finds the only .sln in the root or src and demands --sln otherw
   const none = makeRepo({ 'a.txt': 'x\n' });
   assert.throws(() => defaultSln(none), /--sln/);
 });
+
+import { symlinkSync } from 'node:fs';
+
+test('a property-versioned ref of the same id is left alone, even next to a literal one', async () => {
+  const body = '<ItemGroup Condition="\'$(TargetFramework)\'==\'net48\'">' + ref('Solid.Core', '$(SolidLegacy)') + '</ItemGroup><ItemGroup>' + ref('Solid.Core', '2.3.6') + '</ItemGroup>';
+  const { manifestPath, dir } = await setup({ 'a/a.csproj': proj('2.2.7', body) });
+  const r = await bump({ manifestPath, repo: 'consumer', sln: 'x.sln', runTests: tests(ok(), ok()) });
+  const text = readFileSync(join(dir, 'a/a.csproj'), 'utf8');
+  assert.match(text, /Version="\$\(SolidLegacy\)"/);
+  assert.match(text, new RegExp(`Version="${RC}"`));
+  assert.deepEqual(r.changed, [{ file: 'a/a.csproj', id: 'Solid.Core', old: ['2.3.6'], new: RC }]);
+  assert.deepEqual(r.unresolved.map((u) => u.id), ['Solid.Core']);
+});
+
+test('untracked csproj files and symlinked csproj targets are never edited', async () => {
+  const outside = tmp('outside');
+  const target = join(outside, 'real.csproj');
+  writeFileSync(target, proj('1.0.0', ref('Solid.Core', '2.3.6')));
+  const { manifestPath, dir } = await setup({ 'a/a.csproj': proj('2.2.7', ref('Solid.Core', '2.3.2')) });
+  symlinkSync(target, join(dir, 'link.csproj'));
+  git(dir, 'add', 'link.csproj');
+  git(dir, 'commit', '-q', '-m', 'link');
+  put(dir, 'new/n.csproj', proj('1.0.0', ref('Solid.Core', '2.3.6')));
+  const untracked = readFileSync(join(dir, 'new/n.csproj'), 'utf8');
+  await bump({ manifestPath, repo: 'consumer', sln: 'x.sln', runTests: tests(ok(), ok()) });
+  assert.equal(readFileSync(join(dir, 'new/n.csproj'), 'utf8'), untracked);
+  assert.equal(readFileSync(target, 'utf8'), proj('1.0.0', ref('Solid.Core', '2.3.6')));
+  assert.match(readFileSync(join(dir, 'a/a.csproj'), 'utf8'), new RegExp(RC));
+});
+
+test('refs it cannot retarget are reported as unresolved: versionless, Update items and central package versions', async () => {
+  const { manifestPath } = await setup({
+    'a/a.csproj': proj('2.2.7', '<PackageReference Include="Solid.Core" /><PackageReference Update="Solid.Practices.IoC" Version="2.3.6" />'),
+    'Directory.Packages.props': '<Project><ItemGroup><PackageVersion Include="Attest.Tests.Core" Version="2.4.6" /></ItemGroup></Project>\n',
+  });
+  const r = await bump({ manifestPath, repo: 'consumer', sln: 'x.sln', runTests: tests(ok(), ok()) });
+  assert.deepEqual(r.unresolved.map((u) => `${u.file} ${u.id}`).sort(), ['Directory.Packages.props Attest.Tests.Core', 'a/a.csproj Solid.Core', 'a/a.csproj Solid.Practices.IoC']);
+  assert.equal(r.changed.length, 0);
+});
+
+test('a baseline with no test result stops before any edit unless allowNoBaseline is set', async () => {
+  const before = proj('2.2.7', ref('Solid.Core', '2.3.2'));
+  const { manifestPath, dir } = await setup({ 'a/a.csproj': before });
+  const runTests = tests({ built: false, failed: [] }, ok());
+  await assert.rejects(bump({ manifestPath, repo: 'consumer', sln: 'x.sln', runTests }), /baseline.*no test result.*allowNoBaseline/s);
+  assert.equal(readFileSync(join(dir, 'a/a.csproj'), 'utf8'), before);
+  assert.equal(runTests.calls.length, 1);
+  const r = await bump({ manifestPath, repo: 'consumer', sln: 'x.sln', allowNoBaseline: true, runTests: tests({ built: false, failed: [] }, { built: false, failed: [] }) });
+  assert.equal(r.changed.length, 1);
+});

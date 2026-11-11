@@ -86,3 +86,22 @@ test('bump says no test result, not did not build, when the run produced no summ
   assert.match(r.stdout, /after: no test result/);
   assert.doesNotMatch(r.stdout, /did not build/);
 });
+
+test('bump --sln is resolved from the shell folder and a missing file is refused before anything runs', async () => {
+  const { manifest, env } = await bumpFixture('echo "Passed! - Failed: 0, Passed: 1, Skipped: 0, Total: 1"');
+  const r = spawnSync(process.execPath, [cli, 'bump', 'Lib', '--sln', 'nope/Missing.sln', '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /--sln .*Missing\.sln.* does not exist/);
+});
+
+test('bump stops on a baseline with no test result and --allow-no-baseline lets it continue', async () => {
+  const { manifest, env } = await bumpFixture('echo "Test Run Aborted."; exit 1');
+  const { writeFileSync } = await import('node:fs');
+  writeFileSync(join(env.PATH.split(':')[0], 'dotnet'), '#!/bin/sh\necho "Test Run Aborted."\nexit 1\n');
+  const stopped = spawnSync(process.execPath, [cli, 'bump', 'Lib', '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(stopped.status, 1);
+  assert.match(stopped.stderr, /--allow-no-baseline/);
+  const go = spawnSync(process.execPath, [cli, 'bump', 'Lib', '--allow-no-baseline', '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(go.status, 0, go.stderr);
+  assert.match(go.stdout, /baseline: no test result, after: no test result/);
+});

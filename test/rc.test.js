@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { rc } from '../src/rc.js';
@@ -162,4 +162,23 @@ test('a stale entry (its test passes) is reported but does not fail the run', as
   const lines = [];
   await rc({ manifestPath: s.manifestPath, now: NOW, published, log: (l) => lines.push(l) });
   assert.ok(lines.some((l) => l.includes('stale known failing: LibB Tests.Works')), lines.join('\n'));
+});
+
+test('an allowlisted failure does not let the run through when a second test host crashed', async () => {
+  const { mkdtempSync, chmodSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const s = makeStack({ failingB: true });
+  await withKnownFailing(s, [known('Tests.Works', '2026-12-31')]);
+  const real = execFileSync('which', ['dotnet']).toString().trim();
+  const bin = mkdtempSync(join(tmpdir(), 'wrap-'));
+  writeFileSync(join(bin, 'dotnet'), `#!/bin/sh\n\"${real}\" \"\$@\"\ncode=\$?\nif [ \"\$1\" = test ] && echo \"\$2\" | grep -q LibB.Tests; then\n  echo 'Test run for /w/LibB.Tests.dll (.NETCoreApp,Version=v8.0)'\n  echo 'The active test run was aborted. Reason: Test host process crashed'\n  echo 'Test Run Aborted.'\n  exit 1\nfi\nexit \$code\n`);
+  chmodSync(join(bin, 'dotnet'), 0o755);
+  const saved = process.env.PATH;
+  process.env.PATH = `${bin}:${saved}`;
+  try {
+    await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published }), (e) => e.name === 'CommandError' && /^dotnet test /.test(e.message));
+  } finally {
+    process.env.PATH = saved;
+  }
+  assert.deepEqual(readdirSync(s.feed), []);
 });

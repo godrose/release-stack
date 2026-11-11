@@ -49,12 +49,13 @@ export function listProjectRefs(xml) {
   return [...xml.matchAll(/<ProjectReference\b[^>]*>/g)].map((m) => attr(m[0], 'Include')).filter((v) => v !== null);
 }
 
-export function setPackageRefVersion(xml, id, version) {
+export function setPackageRefVersion(xml, id, version, { skipProperty = false } = {}) {
   const old = [];
   const out = xml.replace(PACKAGE_REF, (el) => {
     const include = attr(openingTag(el), 'Include');
     const current = versionOf(el);
     if (include === null || include.toLowerCase() !== id.toLowerCase() || current === null) return el;
+    if (skipProperty && current.startsWith('$(')) return el;
     old.push(current);
     return withVersion(el, version);
   });

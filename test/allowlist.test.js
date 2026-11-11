@@ -40,3 +40,29 @@ test('an expired entry does not allow its failing test, and the expiry day itsel
   const last = evaluate({ failed: ['C'], entries: [entry('C', '2026-11-11')], now: new Date('2026-11-11T23:59:59Z') });
   assert.deepEqual([last.unexpected, last.expired], [[], []]);
 });
+
+import { complete } from '../src/allowlist.js';
+
+const RUN = (n) => `Test run for /w/${n}/bin/Release/${n}.dll (.NETCoreApp,Version=v10.0)\n`;
+const SUM = (n, f = 0) => `${f ? 'Failed!' : 'Passed!'}  - Failed:     ${f}, Passed:     1, Skipped:     0, Total:     1, Duration: 5 ms - ${n}.dll (net10.0)\n`;
+
+test('complete needs one totals line per test run and no build error or abort', () => {
+  assert.equal(complete(RUN('A') + SUM('A')), true);
+  assert.equal(complete(RUN('A') + SUM('A') + RUN('B') + SUM('B', 1)), true);
+});
+
+test('complete is false when a project stopped compiling but another project printed totals', () => {
+  const out = `/w/Broken/Broken.cs(3,5): error CS0029: Cannot implicitly convert type 'int' to 'string' [/w/Broken/Broken.csproj]\n${RUN('Pass')}${SUM('Pass')}`;
+  assert.equal(complete(out), false);
+});
+
+test('complete is false when one test host crashed and another run printed totals', () => {
+  const out = `${RUN('T')}${SUM('T', 1)}${RUN('T')}The active test run was aborted. Reason: Test host process crashed\nTest Run Aborted.\n`;
+  assert.equal(complete(out), false);
+  assert.equal(complete(`${RUN('T')}${SUM('T', 1)}${RUN('T')}Could not find 'dotnet' host for the 'X64' architecture.\n`), false);
+});
+
+test('complete is false with no totals at all', () => {
+  assert.equal(complete('Test Run Aborted.\n'), false);
+  assert.equal(complete(''), false);
+});
