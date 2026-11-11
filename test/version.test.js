@@ -41,3 +41,8 @@ test('publishedVersions reads the flat container and treats 404 as no versions',
   const broken = async () => ({ ok: false, status: 500, json: async () => ({}) });
   await assert.rejects(() => publishedVersions('Solid.Core', broken), /500/);
 });
+
+test('runStamp is the UTC minute as yyyymmddHHMM', async () => {
+  const { runStamp } = await import('../src/version.js');
+  assert.equal(runStamp(new Date('2026-11-11T15:30:59Z')), '202611111530');
+});

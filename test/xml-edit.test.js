@@ -92,3 +92,9 @@ test('nuspec: the package version and one dependency version are edited, nothing
   assert.ok(d.xml.includes(`<dependency id="Solid.Core" version="${NEW}" />`));
   assert.ok(d.xml.includes('<dependency id="Solid.Patterns.Builder" version="2.3.6" />'));
 });
+
+test('getProjectVersion reads the project Version and throws when there is none', async () => {
+  const { getProjectVersion } = await import('../src/xml-edit.js');
+  assert.equal(getProjectVersion(fx('csproj/project-ref.csproj')), '2.3.6');
+  assert.throws(() => getProjectVersion('<Project><PropertyGroup /></Project>'), /no <Version>/);
+});

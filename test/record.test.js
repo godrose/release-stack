@@ -22,3 +22,11 @@ test('a record is never overwritten', async () => {
   await writeRecord(feed, rec('202611111530'));
   await assert.rejects(() => writeRecord(feed, rec('202611111530')), /already exists/);
 });
+
+test('hasRecord says whether a run id was already recorded', async () => {
+  const { hasRecord } = await import('../src/record.js');
+  const feed = tmp('feed');
+  assert.equal(await hasRecord(feed, '202611111530'), false);
+  await writeRecord(feed, rec('202611111530'));
+  assert.equal(await hasRecord(feed, '202611111530'), true);
+});

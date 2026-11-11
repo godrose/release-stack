@@ -25,3 +25,13 @@ export async function latestRecord(feedDir) {
   names.sort();
   return JSON.parse(await readFile(join(dirOf(feedDir), names[names.length - 1]), 'utf8'));
 }
+
+export async function hasRecord(feedDir, runId) {
+  try {
+    await readFile(join(dirOf(feedDir), `${runId}.json`));
+    return true;
+  } catch (e) {
+    if (e.code === 'ENOENT') return false;
+    throw e;
+  }
+}

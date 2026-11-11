@@ -43,10 +43,13 @@ export function nextStable(local, published) {
   return bumpPatch(coreOf(top));
 }
 
-export function rcVersion(base, now) {
+export function runStamp(now) {
   const p = (n) => String(n).padStart(2, '0');
-  const stamp = `${now.getUTCFullYear()}${p(now.getUTCMonth() + 1)}${p(now.getUTCDate())}${p(now.getUTCHours())}${p(now.getUTCMinutes())}`;
-  return `${base}-rc.${stamp}`;
+  return `${now.getUTCFullYear()}${p(now.getUTCMonth() + 1)}${p(now.getUTCDate())}${p(now.getUTCHours())}${p(now.getUTCMinutes())}`;
+}
+
+export function rcVersion(base, now) {
+  return `${base}-rc.${runStamp(now)}`;
 }
 
 export async function publishedVersions(id, fetchFn = fetch) {

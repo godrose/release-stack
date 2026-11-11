@@ -52,6 +52,14 @@ export function setPackageRefVersion(xml, id, version) {
   return { xml: out, old, changed: old.length > 0 };
 }
 
+export function getProjectVersion(xml) {
+  for (const m of xml.matchAll(/<PropertyGroup\b[^>]*>[\s\S]*?<\/PropertyGroup>/g)) {
+    const v = /<Version>([^<]*)<\/Version>/.exec(m[0]);
+    if (v) return v[1];
+  }
+  throw new Error('project has no <Version> in a <PropertyGroup>');
+}
+
 export function setProjectVersion(xml, version) {
   const group = /<PropertyGroup\b[^>]*>[\s\S]*?<\/PropertyGroup>/g;
   for (const m of xml.matchAll(group)) {
