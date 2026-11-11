@@ -120,3 +120,46 @@ test('every project that declares its own version gets the run version and the r
   ]);
   assert.deepEqual(rec.repos.find((r) => r.name === 'LibA').projects, [{ file: 'src/LibA/LibA.csproj', old: '1.0.0', new: v }]);
 });
+
+async function withKnownFailing(s, entries) {
+  const { writeFileSync } = await import('node:fs');
+  const m = JSON.parse(readFileSync(s.manifestPath, 'utf8'));
+  m.repos[1].knownFailing = entries;
+  writeFileSync(s.manifestPath, JSON.stringify(m));
+}
+const NOW = new Date('2026-11-11T15:30:00Z');
+const known = (test, expires) => ({ test, owner: 'godrose', expires });
+
+test('a known failing test that is listed and not expired lets the run publish, and the entry is printed', async () => {
+  const s = makeStack({ failingB: true });
+  await withKnownFailing(s, [known('Tests.Works', '2026-12-31')]);
+  const lines = [];
+  await rc({ manifestPath: s.manifestPath, now: NOW, published, log: (l) => lines.push(l) });
+  assert.deepEqual(nupkgs(s.feed), ['LibA.1.0.1-rc.202611111530.nupkg', 'LibB.1.0.1-rc.202611111530.nupkg']);
+  assert.ok(lines.some((l) => l.includes('known failing: LibB Tests.Works (owner godrose, expires 2026-12-31)')), lines.join('\n'));
+});
+
+test('an expired entry fails the run before anything is built, even when its test passes', async () => {
+  const { AllowlistError } = await import('../src/allowlist.js');
+  for (const failingB of [true, false]) {
+    const s = makeStack({ failingB });
+    await withKnownFailing(s, [known('Tests.Works', '2026-11-10')]);
+    await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published }), (e) => e instanceof AllowlistError && /LibB.*Tests\.Works.*godrose.*2026-11-10/.test(e.message));
+    assert.deepEqual(readdirSync(s.feed), []);
+  }
+});
+
+test('a failing test that is not in the allowlist still fails the run and publishes nothing', async () => {
+  const s = makeStack({ failingB: true });
+  await withKnownFailing(s, [known('Tests.SomethingElse', '2026-12-31')]);
+  await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published }), (e) => e.name === 'CommandError' && /Failed Tests\.Works/.test(e.message));
+  assert.deepEqual(readdirSync(s.feed), []);
+});
+
+test('a stale entry (its test passes) is reported but does not fail the run', async () => {
+  const s = makeStack();
+  await withKnownFailing(s, [known('Tests.Works', '2026-12-31')]);
+  const lines = [];
+  await rc({ manifestPath: s.manifestPath, now: NOW, published, log: (l) => lines.push(l) });
+  assert.ok(lines.some((l) => l.includes('stale known failing: LibB Tests.Works')), lines.join('\n'));
+});

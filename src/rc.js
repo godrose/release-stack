@@ -9,6 +9,7 @@ import { assertClean, createWorktree, removeWorktree, pruneWorktrees, currentRef
 import { publishStaging, FeedConflictError } from './feed.js';
 import { writeRecord, latestRecord, hasRecord } from './record.js';
 import { resolvePin } from './pins.js';
+import { AllowlistError, parseFailures, hasSummary, evaluate } from './allowlist.js';
 import { nextStable, rcVersion, runStamp, publishedVersions } from './version.js';
 import {
   getProjectVersion, setProjectVersion, hasProjectVersion, setPackageRefVersion, listPackageRefs,
@@ -22,6 +23,8 @@ export class CommandError extends Error {
     const tail = `${e.stdout ?? ''}${e.stderr ?? ''}`.split('\n').filter((l) => /error|fail/i.test(l)).slice(-12).join('\n');
     super(`${cmd} ${args.join(' ')} failed\n${tail || e.message}`);
     this.name = 'CommandError';
+    this.stdout = e.stdout ?? '';
+    this.stderr = e.stderr ?? '';
   }
 }
 
@@ -56,6 +59,13 @@ export async function rc(opts) {
   const published = opts.published ?? publishedVersions;
   const manifest = loadManifest(opts.manifestPath);
   const runId = runStamp(now);
+  const expired = [];
+  for (const repo of manifest.repos) {
+    const { expired: gone } = evaluate({ failed: [], entries: repo.knownFailing, now });
+    expired.push(...gone.map((e) => ({ ...e, repo: repo.name })));
+    for (const e of repo.knownFailing) if (!gone.includes(e)) log(`known failing: ${repo.name} ${e.test} (owner ${e.owner}, expires ${e.expires})`);
+  }
+  if (expired.length) throw new AllowlistError(expired);
   if (await hasRecord(manifest.feed, runId)) throw new FeedConflictError([`records/${runId}.json`]);
 
   for (const repo of manifest.repos) await pruneWorktrees(repo.path);
@@ -143,10 +153,19 @@ export async function rc(opts) {
       await writeFile(slnf, JSON.stringify({ solution: { path: basename(slnPath), projects: [...new Set(inSln)] } }, null, 2));
       log(`${repo.name}: build`);
       await run(wt.path, 'dotnet', buildArgs(relative(wt.path, slnf).replace(/\\/g, '/'), sources));
+      const failedHere = [];
       for (const t of repo.tests) {
         log(`${repo.name}: test ${t}`);
-        await run(wt.path, 'dotnet', ['test', join(wt.path, t), '-c', 'Release', '--no-build']);
+        try {
+          await run(wt.path, 'dotnet', ['test', join(wt.path, t), '-c', 'Release', '--no-build']);
+        } catch (e) {
+          const out = `${e.stdout ?? ''}${e.stderr ?? ''}`;
+          const failed = parseFailures(out);
+          if (!failed.length || !hasSummary(out) || evaluate({ failed, entries: repo.knownFailing, now }).unexpected.length) throw e;
+          failedHere.push(...failed);
+        }
       }
+      for (const e of evaluate({ failed: failedHere, entries: repo.knownFailing, now }).stale) log(`stale known failing: ${repo.name} ${e.test} (owner ${e.owner}, expires ${e.expires})`);
 
       for (const pkg of buildPackages) {
         const project = join(wt.path, pkg.project);
