@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, relative, basename, dirname } from 'node:path';
 import { loadManifest } from './manifest.js';
 import { buildGraph } from './graph.js';
-import { assertClean, createWorktree, removeWorktree, currentRef } from './worktree.js';
+import { assertClean, createWorktree, removeWorktree, pruneWorktrees, currentRef } from './worktree.js';
 import { publishStaging, FeedConflictError } from './feed.js';
 import { writeRecord, latestRecord, hasRecord } from './record.js';
 import { resolvePin } from './pins.js';
@@ -58,6 +58,7 @@ export async function rc(opts) {
   const runId = runStamp(now);
   if (await hasRecord(manifest.feed, runId)) throw new FeedConflictError([`records/${runId}.json`]);
 
+  for (const repo of manifest.repos) await pruneWorktrees(repo.path);
   const work = await mkdtemp(join(tmpdir(), `rc-stack-${runId}-`));
   const staging = join(work, 'staging');
   await mkdir(staging);
@@ -174,7 +175,8 @@ export async function rc(opts) {
     }
 
     await publishStaging(staging, manifest.feed);
-    const record = { runId, createdAt: now.toISOString(), origin: 'local', repos: repoRecords, packages: packed };
+    const carried = (latest?.packages ?? []).filter((p) => idOwner.has(p.id) && !rebuilt.has(idOwner.get(p.id).name));
+    const record = { runId, createdAt: now.toISOString(), origin: 'local', repos: repoRecords, packages: [...packed, ...carried] };
     await writeRecord(manifest.feed, record);
     return record;
   } finally {

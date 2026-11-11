@@ -30,6 +30,10 @@ export async function createWorktree(repoPath, ref, dest) {
   return { path: dest, sha, treeHash };
 }
 
+export async function pruneWorktrees(repoPath) {
+  await git(repoPath, 'worktree', 'prune');
+}
+
 export async function removeWorktree(repoPath, path) {
   await git(repoPath, 'worktree', 'remove', '--force', path);
 }

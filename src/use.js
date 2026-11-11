@@ -63,9 +63,12 @@ export async function use({ consumer, feedDir }) {
   if (!record) throw new UseError(`no rc record in ${feedDir}: run rc first`);
   const existing = await readJson(join(consumer, STATE));
   if (existing) {
-    if (existing.runId === record.runId) return { runId: record.runId, changed: [], skipped: [], noop: true };
+    if (existing.runId === record.runId && !existing.partial) return { runId: record.runId, changed: [], skipped: [], noop: true };
     const reverted = await useStable({ consumer });
-    if (reverted.skipped.length) throw new UseError('an earlier use left pins that were edited by hand; resolve them first');
+    if (reverted.skipped.length) {
+      const list = reverted.skipped.map((x) => `${x.file} (${x.id})`).join(', ');
+      throw new UseError(`pins edited by hand since the last use: ${list}. Put the stable version back, or delete ${STATE} to forget them`);
+    }
   }
   const present = (await readdir(consumer)).find((n) => n.toLowerCase() === 'nuget.config');
   if (present) throw new UseError(`${consumer} has its own ${present}: merging into an existing nuget.config is not supported yet`);
@@ -106,6 +109,7 @@ export async function useStable({ consumer }) {
       continue;
     }
     const current = listPackageRefs(xml).filter(same(entry.id)).map((r) => r.version);
+    if (current.length === entry.old.length && current.every((v, i) => v === entry.old[i])) continue;
     if (current.length !== entry.old.length || !current.every((v) => v === entry.new)) {
       skipped.push({ file: entry.file, id: entry.id, reason: 'changed since use' });
       continue;
@@ -114,14 +118,14 @@ export async function useStable({ consumer }) {
     changed.push(entry);
   }
   let nugetConfig = null;
-  if (state.nugetConfig?.created) {
+  if (state.nugetConfig?.created && !skipped.length) {
     const path = join(consumer, 'nuget.config');
     const now = await readFile(path, 'utf8').catch(() => null);
     if (now === state.nugetConfig.content) { await rm(path); nugetConfig = 'removed'; } else nugetConfig = now === null ? 'missing' : 'kept';
   }
   if (skipped.length) {
     const left = state.entries.filter((e) => skipped.some((s) => s.file === e.file && s.id === e.id));
-    await writeFile(join(consumer, STATE), JSON.stringify({ ...state, entries: left, nugetConfig: null }, null, 2) + '\n');
+    await writeFile(join(consumer, STATE), JSON.stringify({ ...state, entries: left, partial: true }, null, 2) + '\n');
   } else {
     await rm(join(consumer, '.rc-stack'), { recursive: true, force: true });
   }

@@ -81,3 +81,30 @@ test('buildArgs passes the slnf relative to the repo root', async () => {
   assert.equal(args[1], 'src/rc-stack.slnf');
   assert.ok(args.includes('-p:RestoreAdditionalProjectSources=/a%3B/b'));
 });
+
+test('a partial run records the whole stack and a later partial run still pins the carried-over upstream', async () => {
+  const s = makeStack();
+  const first = await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T15:30:00Z'), published });
+  put(s.repos.LibB, 'src/LibB/Code.cs', 'namespace LibB { public static class B { public static int Two() => 2; public static int Three() => 3; } }\n');
+  git(s.repos.LibB, 'commit', '-q', '-am', 'change B');
+  const second = await rc({ manifestPath: s.manifestPath, from: 'LibB', now: new Date('2026-11-11T16:10:00Z'), published });
+  const byId = Object.fromEntries(second.packages.map((p) => [p.id, p.version]));
+  assert.deepEqual(byId, { LibA: first.repos[0].version, LibB: '1.0.1-rc.202611111610' });
+  put(s.repos.LibB, 'src/LibB/Code.cs', 'namespace LibB { public static class B { public static int Two() => 2; public static int Four() => 4; } }\n');
+  git(s.repos.LibB, 'commit', '-q', '-am', 'change B again');
+  const third = await rc({ manifestPath: s.manifestPath, from: 'LibB', now: new Date('2026-11-11T16:40:00Z'), published });
+  assert.deepEqual(third.repos[0].upstream, { LibA: { version: first.repos[0].version, fromRecord: second.runId } });
+  assert.match(nuspecOf(s.feed, 'LibB.1.0.1-rc.202611111640.nupkg'), /<dependency id="LibA" version="1.0.1-rc.202611111530"/);
+});
+
+test('worktrees left behind by an interrupted run are pruned at the start of the next run', async () => {
+  const { rmSync } = await import('node:fs');
+  const { tmp } = await import('./helpers.js');
+  const s = makeStack();
+  const stale = join(tmp('stale'), 'LibA');
+  git(s.repos.LibA, 'worktree', 'add', '-q', '--detach', stale, 'HEAD');
+  rmSync(stale, { recursive: true, force: true });
+  assert.equal(git(s.repos.LibA, 'worktree', 'list').split('\n').length, 2);
+  await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T15:30:00Z'), published });
+  assert.equal(git(s.repos.LibA, 'worktree', 'list').split('\n').length, 1);
+});
