@@ -1,7 +1,7 @@
 function parse(v) {
-  const m = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(v);
+  const m = /^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(v);
   if (!m) throw new Error(`not a semantic version: ${v}`);
-  return { core: [m[1], m[2], m[3]].map(BigInt), pre: m[4] ? m[4].split('.') : [] };
+  return { core: [m[1], m[2], m[3], m[4] ?? '0'].map(BigInt), pre: m[5] ? m[5].split('.') : [] };
 }
 
 function compareIdentifier(a, b) {
@@ -16,7 +16,7 @@ function compareIdentifier(a, b) {
 export function compareSemver(a, b) {
   const pa = parse(a);
   const pb = parse(b);
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     if (pa.core[i] !== pb.core[i]) return pa.core[i] < pb.core[i] ? -1 : 1;
   }
   if (!pa.pre.length && !pb.pre.length) return 0;
@@ -31,7 +31,7 @@ export function compareSemver(a, b) {
   return 0;
 }
 
-const coreOf = (v) => parse(v).core.join('.');
+const coreOf = (v) => parse(v).core.slice(0, 3).join('.');
 const bumpPatch = (core) => { const [a, b, c] = core.split('.').map(BigInt); return `${a}.${b}.${c + 1n}`; };
 
 export function nextStable(local, published) {

@@ -46,3 +46,10 @@ test('runStamp is the UTC minute as yyyymmddHHMM', async () => {
   const { runStamp } = await import('../src/version.js');
   assert.equal(runStamp(new Date('2026-11-11T15:30:59Z')), '202611111530');
 });
+
+test('a legacy four-part version parses and orders after its three-part base', () => {
+  assert.equal(compareSemver('1.0.3.1', '1.0.3'), 1);
+  assert.equal(compareSemver('1.0.3.1', '1.0.4'), -1);
+  assert.equal(compareSemver('1.0.3.0', '1.0.3'), 0);
+  assert.equal(nextStable('2.3.6', ['1.0.3.1', '2.3.6']), '2.3.7');
+});
