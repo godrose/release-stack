@@ -71,7 +71,7 @@ export async function rc(opts) {
     const refs = new Map();
     for (const repo of manifest.repos) {
       const ids = new Set();
-      for (const pkg of repo.packages) {
+      for (const pkg of repo.packages.filter((p) => p.platform === 'any')) {
         const file = join(trees.get(repo.name).path, pkg.project);
         if (!(await exists(file))) throw new Error(`${repo.name}: package ${pkg.id} project ${pkg.project} not found at ${trees.get(repo.name).ref}`);
         for (const r of listPackageRefs(await readFile(file, 'utf8'))) ids.add(r.id);

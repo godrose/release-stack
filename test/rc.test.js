@@ -64,3 +64,13 @@ test('a dirty checkout of a repo that must be built is refused before anything i
   await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T17:00:00Z'), published }), DirtyTreeError);
   assert.deepEqual(readdirSync(s.feed), []);
 });
+
+test('a windows-only package whose project file does not exist here is skipped, not an error', async () => {
+  const { readFileSync, writeFileSync } = await import('node:fs');
+  const s = makeStack();
+  const m = JSON.parse(readFileSync(s.manifestPath, 'utf8'));
+  m.repos[0].packages.push({ id: 'LibWin', project: 'src/LibWin/Nope.csproj', pack: 'dotnet', platform: 'windows' });
+  writeFileSync(s.manifestPath, JSON.stringify(m));
+  const rec = await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T18:00:00Z'), published });
+  assert.deepEqual(rec.packages.map((p) => p.id).sort(), ['LibA', 'LibB']);
+});
