@@ -1,5 +1,20 @@
 {
   "feed": "~/Workspace/packages/rc-feed",
+  "families": {
+    "Solid": {
+      "prefix": "Solid."
+    },
+    "Attest": {
+      "prefix": "Attest."
+    },
+    "LogoFX": {
+      "prefix": "LogoFX.",
+      "anchor": "LogoFX.Core"
+    }
+  },
+  "scan": [
+    "~/Workspace/logofx-project"
+  ],
   "repos": [
     {
       "name": "Solid",

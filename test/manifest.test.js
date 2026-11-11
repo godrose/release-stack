@@ -77,3 +77,41 @@ test('a package platform defaults to the repo platform and rejects unknown value
   assert.throws(() => loadManifest(write(bad)), (e) =>
     e instanceof ManifestError && e.message.includes('repos[0].packages[0].platform'));
 });
+
+test('families, scan and knownFailing load, with defaults when absent', () => {
+  const plain = loadManifest(write(good()));
+  assert.deepEqual([plain.families, plain.scan, plain.repos[0].knownFailing], [{}, [], []]);
+  const root = mkdtempSync(join(tmpdir(), 'scan-'));
+  const m = good();
+  m.families = { Solid: { prefix: 'Solid.' }, LogoFX: { prefix: 'LogoFX.', anchor: 'LogoFX.Core' } };
+  m.scan = [root];
+  m.repos[0].knownFailing = [{ test: 'A should work', owner: 'godrose', expires: '2026-12-31' }];
+  const loaded = loadManifest(write(m));
+  assert.equal(loaded.families.LogoFX.anchor, 'LogoFX.Core');
+  assert.deepEqual(loaded.scan, [root]);
+  assert.equal(loaded.repos[0].knownFailing[0].owner, 'godrose');
+});
+
+test('a knownFailing entry without an owner or with a bad date names its field', () => {
+  const noOwner = good();
+  noOwner.repos[0].knownFailing = [{ test: 't', expires: '2026-12-31' }];
+  assert.throws(() => loadManifest(write(noOwner)), (e) => e instanceof ManifestError && e.message.includes('repos[0].knownFailing[0].owner'));
+  const badDate = good();
+  badDate.repos[0].knownFailing = [{ test: 't', owner: 'o', expires: '11/11/2026' }];
+  assert.throws(() => loadManifest(write(badDate)), (e) => e instanceof ManifestError && e.message.includes('repos[0].knownFailing[0].expires'));
+  const impossible = good();
+  impossible.repos[0].knownFailing = [{ test: 't', owner: 'o', expires: '2026-02-31' }];
+  assert.throws(() => loadManifest(write(impossible)), (e) => e.message.includes('expires'));
+});
+
+test('a scan root that does not exist is named', () => {
+  const m = good();
+  m.scan = ['/no/such/root'];
+  assert.throws(() => loadManifest(write(m)), (e) => e instanceof ManifestError && e.message.includes('scan[0]'));
+});
+
+test('two families with the same prefix are refused', () => {
+  const m = good();
+  m.families = { A: { prefix: 'Solid.' }, B: { prefix: 'Solid.' } };
+  assert.throws(() => loadManifest(write(m)), (e) => e instanceof ManifestError && e.message.includes('families.B.prefix'));
+});
