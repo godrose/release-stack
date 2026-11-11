@@ -108,3 +108,15 @@ test('worktrees left behind by an interrupted run are pruned at the start of the
   await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T15:30:00Z'), published });
   assert.equal(git(s.repos.LibA, 'worktree', 'list').split('\n').length, 1);
 });
+
+test('every project that declares its own version gets the run version and the record lists the edits', async () => {
+  const s = makeStack();
+  const rec = await rc({ manifestPath: s.manifestPath, now: new Date('2026-11-11T15:30:00Z'), published });
+  const v = '1.0.1-rc.202611111530';
+  const b = rec.repos.find((r) => r.name === 'LibB');
+  assert.deepEqual(b.projects, [
+    { file: 'src/LibB.Shared/LibB.Shared.csproj', old: '1.0.0', new: v },
+    { file: 'src/LibB/LibB.csproj', old: '1.0.0', new: v },
+  ]);
+  assert.deepEqual(rec.repos.find((r) => r.name === 'LibA').projects, [{ file: 'src/LibA/LibA.csproj', old: '1.0.0', new: v }]);
+});
