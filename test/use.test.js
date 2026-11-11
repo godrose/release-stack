@@ -101,3 +101,49 @@ test('useStable with nothing to revert says so', async () => {
   const { consumer } = await setup();
   await assert.rejects(() => useStable({ consumer }), (e) => e instanceof UseError && /nothing to revert/.test(e.message));
 });
+
+const newerRecord = (feed) => writeRecord(feed, {
+  runId: '202611121000', createdAt: '2026-11-12T10:00:00.000Z', origin: 'local', repos: [],
+  packages: [
+    { id: 'Solid.Core', version: '2.3.7-rc.202611121000' },
+    { id: 'Attest.Tests.Core', version: '2.4.7-rc.202611121000' },
+    { id: 'Solid.Practices.Modularity', version: '2.3.7-rc.202611121000' },
+  ],
+});
+
+test('use with a newer record reverts the old pins first and applies the new run', async () => {
+  const { consumer, feed } = await setup();
+  const clean = snapshot(consumer);
+  await use({ consumer, feedDir: feed });
+  await newerRecord(feed);
+  const r = await use({ consumer, feedDir: feed });
+  assert.equal(r.runId, '202611121000');
+  const all = Object.values(snapshot(consumer)).join('\n');
+  assert.ok(!all.includes('202611111530'), 'no pin of the old run is left');
+  assert.ok(all.includes('2.3.7-rc.202611121000'));
+  await useStable({ consumer });
+  assert.deepEqual(snapshot(consumer), clean);
+});
+
+test('a skipped pin put back to the stable version by hand lets use --stable finish', async () => {
+  const { consumer, feed } = await setup();
+  const clean = snapshot(consumer);
+  await use({ consumer, feedDir: feed });
+  const edited = join(consumer, 'a/attr.csproj');
+  writeFileSync(edited, readFileSync(edited, 'utf8').replace('2.3.7-rc.202611111530', '9.9.9'));
+  assert.equal((await useStable({ consumer })).skipped.length, 1);
+  writeFileSync(edited, readFileSync(edited, 'utf8').replace('9.9.9', '2.3.6'));
+  const again = await useStable({ consumer });
+  assert.deepEqual(again.skipped, []);
+  assert.deepEqual(snapshot(consumer), clean);
+});
+
+test('after a partial use --stable the nuget.config stays and use does not report a no-op', async () => {
+  const { consumer, feed } = await setup();
+  await use({ consumer, feedDir: feed });
+  const edited = join(consumer, 'a/attr.csproj');
+  writeFileSync(edited, readFileSync(edited, 'utf8').replace('2.3.7-rc.202611111530', '9.9.9'));
+  await useStable({ consumer });
+  assert.ok(existsSync(join(consumer, 'nuget.config')), 'the config stays while a pin is skipped');
+  await assert.rejects(() => use({ consumer, feedDir: feed }), (e) => e instanceof UseError && /a\/attr.csproj/.test(e.message));
+});
