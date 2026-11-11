@@ -36,6 +36,15 @@ export function listPackageRefs(xml) {
   return refs;
 }
 
+export function listVersionlessRefs(xml) {
+  const ids = [];
+  for (const [el] of xml.matchAll(PACKAGE_REF)) {
+    const id = attr(openingTag(el), 'Include');
+    if (id !== null && versionOf(el) === null) ids.push(id);
+  }
+  return ids;
+}
+
 export function listProjectRefs(xml) {
   return [...xml.matchAll(/<ProjectReference\b[^>]*>/g)].map((m) => attr(m[0], 'Include')).filter((v) => v !== null);
 }
