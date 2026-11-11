@@ -52,6 +52,17 @@ export function setPackageRefVersion(xml, id, version) {
   return { xml: out, old, changed: old.length > 0 };
 }
 
+export function setPackageRefVersions(xml, id, versions) {
+  const total = [...xml.matchAll(PACKAGE_REF)].filter(([el]) => attr(openingTag(el), 'Include')?.toLowerCase() === id.toLowerCase() && versionOf(el) !== null).length;
+  if (total !== versions.length) throw new Error(`${id} has ${total} occurrences but ${versions.length} versions were given`);
+  let i = 0;
+  return xml.replace(PACKAGE_REF, (el) => {
+    const include = attr(openingTag(el), 'Include');
+    if (include === null || include.toLowerCase() !== id.toLowerCase() || versionOf(el) === null) return el;
+    return withVersion(el, versions[i++]);
+  });
+}
+
 export function getProjectVersion(xml) {
   for (const m of xml.matchAll(/<PropertyGroup\b[^>]*>[\s\S]*?<\/PropertyGroup>/g)) {
     const v = /<Version>([^<]*)<\/Version>/.exec(m[0]);

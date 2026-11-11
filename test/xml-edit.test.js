@@ -98,3 +98,11 @@ test('getProjectVersion reads the project Version and throws when there is none'
   assert.equal(getProjectVersion(fx('csproj/project-ref.csproj')), '2.3.6');
   assert.throws(() => getProjectVersion('<Project><PropertyGroup /></Project>'), /no <Version>/);
 });
+
+test('setPackageRefVersions sets each occurrence of an id to its own version', async () => {
+  const { setPackageRefVersions } = await import('../src/xml-edit.js');
+  const xml = '<Project><ItemGroup><PackageReference Include="Solid.Core" Version="1.0.0" /><PackageReference Include="Solid.Core" Version="2.0.0" /></ItemGroup></Project>';
+  const out = setPackageRefVersions(xml, 'Solid.Core', ['3.0.0', '4.0.0']);
+  assert.equal(out, xml.replace('1.0.0', '3.0.0').replace('2.0.0', '4.0.0'));
+  assert.throws(() => setPackageRefVersions(xml, 'Solid.Core', ['3.0.0']), /2 occurrences/);
+});
