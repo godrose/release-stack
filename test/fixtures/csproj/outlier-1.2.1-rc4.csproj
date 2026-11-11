@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Solid.Practices.IoC" Version="2.3.6" />
+    <PackageReference Include="Solid.Practices.Modularity" Version="1.2.1-rc4" />
+  </ItemGroup>
+</Project>
