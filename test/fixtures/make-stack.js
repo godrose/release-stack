@@ -11,11 +11,12 @@ const XUNIT = `<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11
 
 const dotnet = (cwd, ...args) => execFileSync('dotnet', args, { cwd, stdio: 'pipe' });
 
-function lib({ name, body, pin, failing, infra }) {
+function lib({ name, body, pin, failing, infra, shared }) {
   const files = {
     [`src/${name}/${name}.csproj`]: `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><Version>1.0.0</Version></PropertyGroup>
   ${pin ? `<ItemGroup><PackageReference Include="${pin}" Version="1.0.0" /></ItemGroup>` : ''}
+  ${shared ? `<ItemGroup><ProjectReference Include="..\\${name}.Shared\\${name}.Shared.csproj" /></ItemGroup>` : ''}
 </Project>
 `,
     [`src/${name}/Code.cs`]: body,
@@ -32,6 +33,13 @@ function lib({ name, body, pin, failing, infra }) {
 public class Tests { [Fact] public void Works() => Assert.Equal(${failing ? 'false' : 'true'}, ${infra ? `${name}.TestInfra.Helper.Truth()` : 'true'}); }
 `,
   };
+  if (shared) {
+    files[`src/${name}.Shared/${name}.Shared.csproj`] = `<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Version>1.0.0</Version></PropertyGroup>
+</Project>
+`;
+    files[`src/${name}.Shared/Shared.cs`] = `namespace ${name}.Shared { public static class S { public static int Three() => 3; } }\n`;
+  }
   if (infra) {
     files[`src/${name}.TestInfra/${name}.TestInfra.csproj`] = `<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><IsPackable>false</IsPackable></PropertyGroup>
@@ -49,7 +57,7 @@ public class Tests { [Fact] public void Works() => Assert.Equal(${failing ? 'fal
 
 export function makeStack({ failingB = false } = {}) {
   const a = lib({ name: 'LibA', body: 'namespace LibA { public static class A { public static int One() => 1; } }\n', failing: false, infra: true });
-  const b = lib({ name: 'LibB', body: 'namespace LibB { public static class B { public static int Two() => 2; } }\n', pin: 'LibA', failing: failingB });
+  const b = lib({ name: 'LibB', body: 'namespace LibB { public static class B { public static int Two() => 2; } }\n', pin: 'LibA', failing: failingB, shared: true });
   put(b, 'devops/pack/LibB/contents/LibB.nuspec', `<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>

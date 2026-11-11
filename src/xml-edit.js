@@ -71,6 +71,10 @@ export function getProjectVersion(xml) {
   throw new Error('project has no <Version> in a <PropertyGroup>');
 }
 
+export function hasProjectVersion(xml) {
+  return [...xml.matchAll(/<PropertyGroup\b[^>]*>[\s\S]*?<\/PropertyGroup>/g)].some((m) => /<Version>[^<]*<\/Version>/.test(m[0]));
+}
+
 export function setProjectVersion(xml, version) {
   const group = /<PropertyGroup\b[^>]*>[\s\S]*?<\/PropertyGroup>/g;
   for (const m of xml.matchAll(group)) {

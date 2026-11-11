@@ -11,7 +11,7 @@ import { writeRecord, latestRecord, hasRecord } from './record.js';
 import { resolvePin } from './pins.js';
 import { nextStable, rcVersion, runStamp, publishedVersions } from './version.js';
 import {
-  getProjectVersion, setProjectVersion, setPackageRefVersion, listPackageRefs,
+  getProjectVersion, setProjectVersion, hasProjectVersion, setPackageRefVersion, listPackageRefs,
   setNuspecVersion, setNuspecDependency,
 } from './xml-edit.js';
 
@@ -121,11 +121,15 @@ export async function rc(opts) {
         return pin?.version ?? null;
       };
 
-      const packageProjects = new Set(buildPackages.map((p) => join(wt.path, p.project)));
+      const projects = [];
       for (const file of await csprojFiles(wt.path)) {
         const before = await readFile(file, 'utf8');
         let xml = before;
-        if (packageProjects.has(file)) xml = setProjectVersion(xml, version);
+        if (hasProjectVersion(xml)) {
+          const old = getProjectVersion(xml);
+          xml = setProjectVersion(xml, version);
+          projects.push({ file: relative(wt.path, file).split('\\').join('/'), old, new: version });
+        }
         for (const { id } of listPackageRefs(xml)) {
           const pin = pinFor(id, 'csproj');
           if (pin) xml = setPackageRefVersion(xml, id, pin).xml;
@@ -171,7 +175,7 @@ export async function rc(opts) {
         }
         packed.push({ id: pkg.id, version });
       }
-      repoRecords.push({ name: repo.name, ref: wt.ref, sha: wt.sha, treeHash: wt.treeHash, version, rebuilt: true, upstream });
+      repoRecords.push({ name: repo.name, ref: wt.ref, sha: wt.sha, treeHash: wt.treeHash, version, rebuilt: true, upstream, projects: projects.sort((a, b) => (a.file < b.file ? -1 : 1)) });
     }
 
     await publishStaging(staging, manifest.feed);
