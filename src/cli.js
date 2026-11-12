@@ -4,12 +4,12 @@ import { dirname, join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import { loadManifest } from './manifest.js';
 import { rc } from './rc.js';
-import { use, useStable } from './use.js';
+import { use, useStable, useRemote } from './use.js';
 import { drift, formatDrift } from './drift.js';
 import { bump } from './bump.js';
 
 const defaultManifest = join(dirname(fileURLToPath(import.meta.url)), '../stack.json');
-const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack rc --remote --root <folder> [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\n       stack drift [--json] [--manifest <file>]\n       stack bump <repo> [--sln <path>] [--allow-no-baseline] [--manifest <file>]';
+const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack rc --remote --root <folder> [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\\n       stack use --remote <run-id> <consumer> [--manifest <file>]\n       stack drift [--json] [--manifest <file>]\n       stack bump <repo> [--sln <path>] [--allow-no-baseline] [--manifest <file>]';
 
 class UsageError extends Error {}
 
@@ -67,6 +67,13 @@ async function main(argv) {
     if (o.remote && !o.root) throw new UsageError('rc --remote needs --root <folder holding the repo checkouts>');
     const record = await rc({ manifestPath, from: o.from, refs: o.refs, origin: o.remote ? 'remote' : 'local', root: o.root, log: (s) => console.log(s) });
     console.log(`rc ${record.runId}: ${record.packages.length} packages in the feed`);
+    return;
+  }
+  if (o.remote) {
+    const [runId, folder] = o.positional;
+    if (!/^\d{12}$/.test(runId ?? '') || !folder) throw new UsageError('use --remote needs a 12-digit run id and a consumer folder\n' + USAGE);
+    const r = await useRemote({ consumer: resolve(folder), runId, manifest: loadManifest(manifestPath) });
+    console.log(r.noop ? `already using remote run ${r.runId}` : `using remote run ${r.runId}: ${r.changed.length} pins changed`);
     return;
   }
   const consumer = resolve(o.positional[0] ?? '');

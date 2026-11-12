@@ -119,3 +119,18 @@ test('rc --remote without GITHUB_TOKEN exits 1 with one line naming it, and need
   assert.match(r.stderr, /GITHUB_TOKEN/);
   assert.equal(r.stderr.trim().split('\n').length, 1);
 });
+
+test('use --remote needs a 12-digit run id and a consumer, and stops on a missing token with one line', async () => {
+  const { writeFileSync } = await import('node:fs');
+  const manifest = join(tmp('m'), 'stack.json');
+  writeFileSync(manifest, JSON.stringify({ feed: tmp('feed'), remote: { source: 'https://nuget.pkg.github.com/godrose/index.json' }, repos: [{ name: 'Lib', path: tmp('none'), platform: 'any', solution: 'x.sln', tests: [], packages: [{ id: 'Solid.Core', project: 'p', pack: 'dotnet' }] }] }));
+  const env = { ...process.env, GITHUB_TOKEN: '' };
+  const consumer = tmp('consumer');
+  const badId = spawnSync(process.execPath, [cli, 'use', '--remote', 'latest', consumer, '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(badId.status, 1);
+  assert.match(badId.stderr, /12-digit run id/);
+  const noToken = spawnSync(process.execPath, [cli, 'use', '--remote', '202611121100', consumer, '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(noToken.status, 1);
+  assert.match(noToken.stderr, /GITHUB_TOKEN/);
+  assert.equal(noToken.stderr.trim().split('\n').length, 1);
+});
