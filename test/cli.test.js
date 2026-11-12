@@ -105,3 +105,17 @@ test('bump stops on a baseline with no test result and --allow-no-baseline lets 
   assert.equal(go.status, 0, go.stderr);
   assert.match(go.stdout, /baseline: no test result, after: no test result/);
 });
+
+test('rc --remote without GITHUB_TOKEN exits 1 with one line naming it, and needs --root', async () => {
+  const { writeFileSync } = await import('node:fs');
+  const manifest = join(tmp('m'), 'stack.json');
+  writeFileSync(manifest, JSON.stringify({ feed: tmp('feed'), remote: { source: tmp('remote') }, repos: [{ name: 'Lib', path: join(tmp('none'), 'missing'), platform: 'any', solution: 'x.sln', tests: [], packages: [] }] }));
+  const env = { ...process.env, GITHUB_TOKEN: '' };
+  const noRoot = spawnSync(process.execPath, [cli, 'rc', '--remote', '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(noRoot.status, 1);
+  assert.match(noRoot.stderr, /--root/);
+  const r = spawnSync(process.execPath, [cli, 'rc', '--remote', '--root', tmp('root'), '--manifest', manifest], { encoding: 'utf8', env });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /GITHUB_TOKEN/);
+  assert.equal(r.stderr.trim().split('\n').length, 1);
+});
