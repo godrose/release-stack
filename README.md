@@ -12,6 +12,7 @@ node src/cli.js use --local <consumer>                         point a consumer 
 node src/cli.js use --stable <consumer>                        put the consumer back
 node src/cli.js rc --remote --root <folder> [--ref ...]          build on a runner and push to the manifest remote source
 node src/cli.js use --remote <run-id> <consumer>                  restore the whole stack of a runner run from the remote source (needs GITHUB_TOKEN)
+node src/cli.js checkout --root <folder> [--ref <repo>=<ref>]...    clone every manifest repo that has a git url into <folder> (used by the workflow)
 node src/cli.js drift [--json]                                 table of every repo against the current stack (read only)
 node src/cli.js bump <repo> [--sln <path>] [--allow-no-baseline]   retarget a repo to the latest rc pins, run its tests, leave it uncommitted
 ```
@@ -40,3 +41,15 @@ node src/cli.js use --stable ~/Workspace/bdd-netcore
 - `drift` reads the manifest repos plus every git repo under the `scan` roots. The current stack is the latest rc record per family, or the latest stable of the family `anchor` on nuget.org when the record has none. Status: `current` (aligned and equal to the stack), `lagging`, `unaligned` (more than one own version, or more than one pinned version of a family), `none` (no family pins). A family whose stack version is unknown shows `?`.
 - `bump <repo>` refuses a repo with changes to tracked files. It runs the tests, rewrites every pin of an id in the latest rc record to the record version (versions in `.csproj` files only, never the repo's own version, no `nuget.config`), runs the tests again and leaves the edit uncommitted. Family ids that are not in the record are left alone and listed as `unaligned`. Verdict `worse` (exit 1) when the after-run fails a test the baseline did not fail, or the baseline had a test result and the after-run has none. `no test result` means dotnet printed no summary, for example when a test host cannot start on this machine. It edits tracked `.csproj` files only (never untracked files, symlinks or submodule contents). References it cannot retarget (no version, a `$(property)` version, `Update=` items, central `PackageVersion` entries) are listed as `unresolved`. It stops before editing when the baseline gave no test result, unless you pass `--allow-no-baseline`. A run counts as having a test result only when every test run printed its totals and nothing printed a build error or an abort. The solution is the only `.sln` in the root or `src/`, else pass `--sln`.
 - Known-failing tests: a repo in `stack.json` may list `knownFailing: [{ test, owner, expires }]` (`expires` is `YYYY-MM-DD`, still valid on that day). `rc` prints every entry on every run. A test run may fail only on listed, non-expired tests, and only if dotnet printed its totals (an aborted run is never allowed). An expired entry fails the run before anything is built, even if its test passes. Entries whose test passed are printed as `stale known failing`. `test` is the name as dotnet prints it after `Failed`.
+
+## The Windows runner
+
+The workflow `rc` (Actions tab, Run workflow) runs on `windows-latest`. It clones every manifest repo at the ref you give (empty means the default branch), runs `rc --remote` and pushes the whole stack to GitHub Packages at one run id with the workflow token. The run record is kept as an artifact. To use the result on a Mac:
+
+```
+export GITHUB_TOKEN=<classic token with read:packages>
+node src/cli.js use --remote <run-id> <consumer>
+node src/cli.js use --stable <consumer>     # to go back
+```
+
+The run id is the 12 digits after `-rc.` in the pushed versions. Old rc packages stay on GitHub Packages until deleted by hand (`gh api -X DELETE /user/packages/nuget/<id>` needs the `delete:packages` scope, see docs/findings/github-packages.md).

@@ -134,3 +134,9 @@ test('use --remote needs a 12-digit run id and a consumer, and stops on a missin
   assert.match(noToken.stderr, /GITHUB_TOKEN/);
   assert.equal(noToken.stderr.trim().split('\n').length, 1);
 });
+
+test('checkout needs --root and exits 1 with the reason', () => {
+  const r = run('checkout');
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /checkout needs --root/);
+});

@@ -1,0 +1,67 @@
+name: rc
+on:
+  workflow_dispatch:
+    inputs:
+      solid_ref:
+        description: Solid branch, tag or commit (empty for the default branch)
+        required: false
+        default: ''
+      attest_ref:
+        description: Attest branch, tag or commit (empty for the default branch)
+        required: false
+        default: ''
+      core_ref:
+        description: LogoFX core branch, tag or commit (empty for the default branch)
+        required: false
+        default: ''
+      testing_ref:
+        description: LogoFX testing branch, tag or commit (empty for the default branch)
+        required: false
+        default: ''
+permissions:
+  contents: read
+  packages: write
+jobs:
+  rc:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            6.0.x
+            8.0.x
+            10.0.x
+      - name: Check out the stack repos
+        shell: pwsh
+        env:
+          SOLID_REF: ${{ inputs.solid_ref }}
+          ATTEST_REF: ${{ inputs.attest_ref }}
+          CORE_REF: ${{ inputs.core_ref }}
+          TESTING_REF: ${{ inputs.testing_ref }}
+        run: |
+          $refs = @()
+          if ($env:SOLID_REF) { $refs += '--ref', "Solid=$env:SOLID_REF" }
+          if ($env:ATTEST_REF) { $refs += '--ref', "Attest=$env:ATTEST_REF" }
+          if ($env:CORE_REF) { $refs += '--ref', "LogoFX.Core=$env:CORE_REF" }
+          if ($env:TESTING_REF) { $refs += '--ref', "LogoFX.Testing=$env:TESTING_REF" }
+          node src/cli.js checkout --root "$env:RUNNER_TEMP/stack" @refs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build, test and push the stack
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node src/cli.js rc --remote --root "$env:RUNNER_TEMP/stack"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Keep the run record
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc-record
+          path: ${{ runner.temp }}/stack/records
+          if-no-files-found: ignore
