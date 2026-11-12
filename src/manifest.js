@@ -52,6 +52,7 @@ export function loadManifest(file) {
       seen.set(p.id, r.name);
       return { ...p, platform: p.platform ?? r.platform };
     });
+    need(r.git === undefined || (typeof r.git === 'string' && r.git), `${f}.git`, 'must be a non-empty string');
     const known = r.knownFailing ?? [];
     need(Array.isArray(known), `${f}.knownFailing`, 'must be an array');
     const knownFailing = known.map((k, j) => {
@@ -61,7 +62,7 @@ export function loadManifest(file) {
       need(typeof k.expires === 'string' && realDate(k.expires), `${kf}.expires`, 'must be a real date as YYYY-MM-DD');
       return { test: k.test, owner: k.owner, expires: k.expires };
     });
-    return { name: r.name, path: expand(r.path, baseDir), platform: r.platform, solution: r.solution, tests: [...r.tests], packages, knownFailing };
+    return { name: r.name, ...(r.git ? { git: r.git } : {}), path: expand(r.path, baseDir), platform: r.platform, solution: r.solution, tests: [...r.tests], packages, knownFailing };
   });
   const families = {};
   const prefixes = new Map();
@@ -80,5 +81,6 @@ export function loadManifest(file) {
     need(existsSync(abs), `scan[${i}]`, `${abs} does not exist`);
     return abs;
   });
-  return { feed: expand(raw.feed, baseDir), repos, families, scan };
+  need(raw.remote === undefined || (raw.remote && typeof raw.remote.source === 'string' && raw.remote.source), 'remote.source', 'must be a non-empty string');
+  return { feed: expand(raw.feed, baseDir), repos, families, scan, ...(raw.remote ? { remote: { source: raw.remote.source } } : {}) };
 }

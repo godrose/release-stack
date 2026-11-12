@@ -115,3 +115,19 @@ test('two families with the same prefix are refused', () => {
   m.families = { A: { prefix: 'Solid.' }, B: { prefix: 'Solid.' } };
   assert.throws(() => loadManifest(write(m)), (e) => e instanceof ManifestError && e.message.includes('families.B.prefix'));
 });
+
+test('git and remote.source load, and bad values name the field', () => {
+  const m = good();
+  m.repos[0].git = 'https://github.com/godrose/Solid.git';
+  m.remote = { source: 'https://nuget.pkg.github.com/godrose/index.json' };
+  const loaded = loadManifest(write(m));
+  assert.equal(loaded.repos[0].git, 'https://github.com/godrose/Solid.git');
+  assert.equal(loaded.remote.source, 'https://nuget.pkg.github.com/godrose/index.json');
+  assert.equal(loadManifest(write(good())).remote, undefined);
+  const badGit = good();
+  badGit.repos[0].git = 5;
+  assert.throws(() => loadManifest(write(badGit)), (e) => e instanceof ManifestError && /repos\[0\]\.git/.test(e.message));
+  const badRemote = good();
+  badRemote.remote = { source: '' };
+  assert.throws(() => loadManifest(write(badRemote)), (e) => e instanceof ManifestError && /remote\.source/.test(e.message));
+});

@@ -392,6 +392,339 @@
           ]
         }
       ]
+    },
+    {
+      "name": "LogoFX.Core",
+      "git": "https://github.com/LogoFX/core.git",
+      "path": "~/Workspace/logofx-project/core",
+      "platform": "any",
+      "solution": "src/LogoFX.Core.sln",
+      "tests": [
+        "src/LogoFX.Core.Tests/LogoFX.Core.Tests.csproj",
+        "src/LogoFX.Core.Specs/LogoFX.Core.Specs.csproj",
+        "src/LogoFX.Client.Core.Specs/LogoFX.Client.Core.Specs.csproj",
+        "src/LogoFX.Practices.IoC.Specs/LogoFX.Practices.IoC.Specs.csproj"
+      ],
+      "packages": [
+        {
+          "id": "LogoFX.Client.Core",
+          "project": "src/LogoFX.Client.Core/LogoFX.Client.Core.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Core/contents/LogoFX.Client.Core.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net462",
+              "glob": "LogoFX.Client.Core.Platform.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "LogoFX.Client.Core.Platform.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "LogoFX.Client.Core.Platform.*"
+            },
+            {
+              "dir": "src/Bin/android/Release",
+              "tfm": "monoandroid403",
+              "glob": "LogoFX.Client.Core.Platform.*"
+            },
+            {
+              "dir": "src/Bin/ios/Release",
+              "tfm": "xamarin.ios10",
+              "glob": "LogoFX.Client.Core.Platform.*"
+            }
+          ],
+          "platform": "windows"
+        },
+        {
+          "id": "LogoFX.Client.Core.Core",
+          "project": "src/LogoFX.Client.Core/LogoFX.Client.Core.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Core.Core/contents/LogoFX.Client.Core.Core.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Core.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Modularity",
+          "project": "src/LogoFX.Client.Modularity/LogoFX.Client.Modularity.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Modularity/contents/LogoFX.Client.Modularity.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Modularity.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Theming",
+          "project": "src/LogoFX.Client.Theming/LogoFX.Client.Theming.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Theming/contents/LogoFX.Client.Theming.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net462",
+              "glob": "LogoFX.Client.Theming.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "LogoFX.Client.Theming.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "LogoFX.Client.Theming.*"
+            }
+          ],
+          "platform": "windows"
+        },
+        {
+          "id": "LogoFX.Core",
+          "project": "src/LogoFX.Core/LogoFX.Core.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Core/contents/LogoFX.Core.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Core.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Practices.IoC",
+          "project": "src/LogoFX.Practices.IoC/LogoFX.Practices.IoC.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Practices.IoC/contents/LogoFX.Practices.IoC.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Practices.IoC.*"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "LogoFX.Testing",
+      "git": "https://github.com/LogoFX/logofx-client-testing.git",
+      "path": "~/Workspace/logofx-project/testing",
+      "platform": "any",
+      "solution": "src/LogoFX.Client.Testing.sln",
+      "tests": [],
+      "packages": [
+        {
+          "id": "LogoFX.Client.Testing.EndToEnd.FlaUI",
+          "project": "src/LogoFX.Client.Testing.EndToEnd.FlaUI/LogoFX.Client.Testing.EndToEnd.FlaUI.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Testing.EndToEnd.FlaUI/contents/LogoFX.Client.Testing.EndToEnd.FlaUI.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.EndToEnd.FlaUI.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Testing.EndToEnd.SpecFlow",
+          "project": "src/LogoFX.Client.Testing.EndToEnd.SpecFlow/LogoFX.Client.Testing.EndToEnd.SpecFlow.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Testing.EndToEnd.SpecFlow/contents/LogoFX.Client.Testing.EndToEnd.SpecFlow.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.EndToEnd.SpecFlow.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Testing.EndToEnd.White",
+          "project": "src/LogoFX.Client.Testing.Contracts/LogoFX.Client.Testing.Contracts.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Testing.EndToEnd.White/contents/LogoFX.Client.Testing.EndToEnd.White.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net462",
+              "glob": "LogoFX.Client.Testing.EndToEnd.White.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "LogoFX.Client.Testing.EndToEnd.White.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "LogoFX.Client.Testing.EndToEnd.White.*"
+            }
+          ],
+          "platform": "windows"
+        },
+        {
+          "id": "LogoFX.Client.Testing.Integration.xUnit",
+          "project": "src/LogoFX.Client.Testing.Integration.xUnit/LogoFX.Client.Testing.Integration.xUnit.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Testing.Integration.xUnit/contents/LogoFX.Client.Testing.Integration.xUnit.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.Integration.xUnit.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.Contracts",
+          "project": "src/LogoFX.Client.Testing.Contracts/LogoFX.Client.Testing.Contracts.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.Contracts/contents/LogoFX.Client.Tests.Contracts.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.Contracts.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.EndToEnd",
+          "project": "src/LogoFX.Client.Testing.EndToEnd/LogoFX.Client.Testing.EndToEnd.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.EndToEnd/contents/LogoFX.Client.Tests.EndToEnd.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.EndToEnd.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.Integration",
+          "project": "src/LogoFX.Client.Testing.Integration/LogoFX.Client.Testing.Integration.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.Integration/contents/LogoFX.Client.Tests.Integration.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.Integration.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.Integration.NUnit",
+          "project": "src/LogoFX.Client.Testing.Integration.NUnit/LogoFX.Client.Testing.Integration.NUnit.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.Integration.NUnit/contents/LogoFX.Client.Tests.Integration.NUnit.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.Integration.NUnit.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.Integration.SpecFlow",
+          "project": "src/LogoFX.Client.Testing.Integration.SpecFlow/LogoFX.Client.Testing.Integration.SpecFlow.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.Integration.SpecFlow/contents/LogoFX.Client.Tests.Integration.SpecFlow.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.Integration.SpecFlow.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.Shared",
+          "project": "src/LogoFX.Client.Testing.Contracts/LogoFX.Client.Testing.Contracts.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.Shared/contents/LogoFX.Client.Tests.Shared.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netstandard/Release",
+              "tfm": "netstandard2.0",
+              "glob": "LogoFX.Client.Testing.*"
+            }
+          ]
+        },
+        {
+          "id": "LogoFX.Client.Tests.Shared.Caliburn.Micro",
+          "project": "src/LogoFX.Client.Testing.Contracts/LogoFX.Client.Testing.Contracts.csproj",
+          "pack": "nuspec",
+          "nuspec": "devops/pack/LogoFX.Client.Tests.Shared.Caliburn.Micro/contents/LogoFX.Client.Tests.Shared.Caliburn.Micro.nuspec",
+          "lib": [
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net462",
+              "glob": "LogoFX.Client.Testing.Shared.Caliburn.Micro.*"
+            },
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net462",
+              "glob": "Caliburn.Micro.*"
+            },
+            {
+              "dir": "src/Bin/netframework/Release",
+              "tfm": "net462",
+              "glob": "System.Windows.Interactivity.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "LogoFX.Client.Testing.Shared.Caliburn.Micro.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "Caliburn.Micro.*"
+            },
+            {
+              "dir": "src/Bin/net/Release",
+              "tfm": "net6.0",
+              "glob": "System.Windows.Interactivity.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "LogoFX.Client.Testing.Shared.Caliburn.Micro.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "Caliburn.Micro.*"
+            },
+            {
+              "dir": "src/Bin/netcore/Release",
+              "tfm": "netcoreapp3.1",
+              "glob": "System.Windows.Interactivity.*"
+            }
+          ],
+          "platform": "windows"
+        }
+      ]
     }
-  ]
+  ],
+  "remote": {
+    "source": "https://nuget.pkg.github.com/godrose/index.json"
+  }
 }
