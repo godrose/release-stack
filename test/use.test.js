@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, existsSync, cpSync, statSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { use, useStable, UseError } from '../src/use.js';
+import { use, useStable, useRemote, UseError } from '../src/use.js';
 import { writeRecord } from '../src/record.js';
 import { tmp, put } from './helpers.js';
 
@@ -146,4 +146,72 @@ test('after a partial use --stable the nuget.config stays and use does not repor
   await useStable({ consumer });
   assert.ok(existsSync(join(consumer, 'nuget.config')), 'the config stays while a pin is skipped');
   await assert.rejects(() => use({ consumer, feedDir: feed }), (e) => e instanceof UseError && /a\/attr.csproj/.test(e.message));
+});
+
+const RUN = '202611121100';
+const REMOTE = 'https://nuget.pkg.github.com/godrose/index.json';
+const manifestOf = (...ids) => ({ remote: { source: REMOTE }, repos: [{ name: 'R', packages: ids.map((id) => ({ id })) }] });
+const IDS = ['Solid.Core', 'Attest.Tests.Core', 'Solid.Practices.Modularity', 'LogoFX.Core'];
+const lister = (missing = []) => {
+  const calls = [];
+  const fn = async (source, id, token) => {
+    calls.push({ source, id, token });
+    const base = id.startsWith('Attest.') ? '2.4.7' : '2.3.7';
+    return missing.includes(id) ? ['1.0.0'] : ['1.0.0', `${base}-rc.${RUN}`, `${base}-rc.202611111530`];
+  };
+  fn.calls = calls;
+  return fn;
+};
+const remoteOpts = (consumer, extra = {}) => ({ consumer, runId: RUN, manifest: manifestOf(...IDS), env: { GITHUB_TOKEN: 'secret-token' }, listVersions: lister(), ...extra });
+
+test('use --remote retargets pins to the run id and maps every manifest id to the remote source with a token reference only', async () => {
+  const { consumer } = await setup();
+  const report = await useRemote(remoteOpts(consumer));
+  assert.equal(report.runId, RUN);
+  assert.equal(report.changed.length, 4);
+  const text = Object.entries(snapshot(consumer)).filter(([f]) => f.endsWith('.csproj')).map(([, c]) => c).join('\n');
+  assert.ok(text.includes(`2.3.7-rc.${RUN}`) && text.includes(`2.4.7-rc.${RUN}`) && !text.includes('2.3.7-rc.202611111530'));
+  const config = readFileSync(join(consumer, 'nuget.config'), 'utf8');
+  for (const id of IDS) assert.match(config, new RegExp(`<package pattern="${id}" />`));
+  assert.match(config, /nuget\.pkg\.github\.com\/godrose\/index\.json/);
+  assert.match(config, /%GITHUB_TOKEN%/);
+  assert.match(config, /value="godrose"/);
+  assert.doesNotMatch(config, /rc-stack-local/);
+  for (const [, text] of Object.entries(snapshot(consumer))) assert.ok(!text.includes('secret-token'));
+});
+
+test('a manifest id with no version for the run id refuses and changes nothing', async () => {
+  const { consumer } = await setup();
+  const before = snapshot(consumer);
+  await assert.rejects(() => useRemote(remoteOpts(consumer, { listVersions: lister(['LogoFX.Core']) })), (e) => e instanceof UseError && /LogoFX\.Core/.test(e.message) && new RegExp(RUN).test(e.message));
+  assert.deepEqual(snapshot(consumer), before);
+});
+
+test('a missing token stops with one line naming it before anything is listed', async () => {
+  const { consumer } = await setup();
+  const list = lister();
+  await assert.rejects(() => useRemote(remoteOpts(consumer, { env: {}, listVersions: list })), (e) => e instanceof UseError && /GITHUB_TOKEN/.test(e.message) && !e.message.includes('\n'));
+  assert.equal(list.calls.length, 0);
+});
+
+test('the two origins exclude each other and nothing changes on a refusal', async () => {
+  const a = await setup();
+  await use({ consumer: a.consumer, feedDir: a.feed });
+  const localState = snapshot(a.consumer);
+  await assert.rejects(() => useRemote(remoteOpts(a.consumer)), (e) => e instanceof UseError && /local/.test(e.message) && /--stable/.test(e.message));
+  assert.deepEqual(snapshot(a.consumer), localState);
+  const b = await setup();
+  await useRemote(remoteOpts(b.consumer));
+  const remoteState = snapshot(b.consumer);
+  await assert.rejects(() => use({ consumer: b.consumer, feedDir: b.feed }), (e) => e instanceof UseError && /remote/.test(e.message) && /--stable/.test(e.message));
+  assert.deepEqual(snapshot(b.consumer), remoteState);
+});
+
+test('use --stable puts a remote use back byte for byte, and the same run id twice is a no-op', async () => {
+  const { consumer } = await setup();
+  const before = snapshot(consumer);
+  await useRemote(remoteOpts(consumer));
+  assert.equal((await useRemote(remoteOpts(consumer))).noop, true);
+  await useStable({ consumer });
+  assert.deepEqual(snapshot(consumer), before);
 });

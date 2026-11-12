@@ -1,6 +1,7 @@
 import { readdir, readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join, relative } from 'node:path';
 import { latestRecord } from './record.js';
+import { listVersions as defaultListVersions } from './remote.js';
 import { listPackageRefs, setPackageRefVersion, setPackageRefVersions } from './xml-edit.js';
 
 export class UseError extends Error {
@@ -36,17 +37,17 @@ const readJson = async (p) => {
 const slash = (p) => p.split('\\').join('/');
 const same = (id) => (r) => r.id.toLowerCase() === id.toLowerCase();
 
-function nugetConfigFor(feedDir, ids) {
+function nugetConfigFor({ key, value, ids, credentials = '' }) {
   const patterns = ids.map((id) => `      <package pattern="${id}" />`).join('\n');
   return `<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <!-- rc-stack:begin -->
   <packageSources>
-    <add key="rc-stack-local" value="${feedDir}" />
+    <add key="${key}" value="${value}" />
     <add key="nuget.org" value="https://api.nuget.org/v3/index.json" protocolVersion="3" />
   </packageSources>
-  <packageSourceMapping>
-    <packageSource key="rc-stack-local">
+${credentials}  <packageSourceMapping>
+    <packageSource key="${key}">
 ${patterns}
     </packageSource>
     <packageSource key="nuget.org">
@@ -58,27 +59,31 @@ ${patterns}
 `;
 }
 
-export async function use({ consumer, feedDir }) {
-  const record = await latestRecord(feedDir);
-  if (!record) throw new UseError(`no rc record in ${feedDir}: run rc first`);
+async function guardState({ consumer, origin, runId }) {
   const existing = await readJson(join(consumer, STATE));
-  if (existing) {
-    if (existing.runId === record.runId && !existing.partial) return { runId: record.runId, changed: [], skipped: [], noop: true };
-    const reverted = await useStable({ consumer });
-    if (reverted.skipped.length) {
-      const list = reverted.skipped.map((x) => `${x.file} (${x.id})`).join(', ');
-      throw new UseError(`pins edited by hand since the last use: ${list}. Put the stable version back, or delete ${STATE} to forget them`);
-    }
+  if (!existing) return { noop: false };
+  const have = existing.origin ?? 'local';
+  if (have !== origin) {
+    throw new UseError(`${consumer} is using the ${have} stack (run ${existing.runId}): run use --stable first, then use the ${origin} stack`);
   }
+  if (existing.runId === runId && !existing.partial) return { noop: true };
+  const reverted = await useStable({ consumer });
+  if (reverted.skipped.length) {
+    const list = reverted.skipped.map((x) => `${x.file} (${x.id})`).join(', ');
+    throw new UseError(`pins edited by hand since the last use: ${list}. Put the stable version back, or delete ${STATE} to forget them`);
+  }
+  return { noop: false };
+}
+
+async function apply({ consumer, runId, packages, config, state }) {
   const present = (await readdir(consumer)).find((n) => n.toLowerCase() === 'nuget.config');
   if (present) throw new UseError(`${consumer} has its own ${present}: merging into an existing nuget.config is not supported yet`);
-
   const edits = [];
   const entries = [];
   for (const file of await csprojFiles(consumer)) {
     const before = await readFile(file, 'utf8');
     let xml = before;
-    for (const { id, version } of record.packages) {
+    for (const { id, version } of packages) {
       const olds = listPackageRefs(xml).filter(same(id)).map((r) => r.version);
       if (!olds.length || olds.every((v) => v === version)) continue;
       xml = setPackageRefVersion(xml, id, version).xml;
@@ -86,12 +91,41 @@ export async function use({ consumer, feedDir }) {
     }
     if (xml !== before) edits.push([file, xml]);
   }
-  const config = nugetConfigFor(feedDir, record.packages.map((p) => p.id));
   for (const [file, xml] of edits) await writeFile(file, xml);
   await writeFile(join(consumer, 'nuget.config'), config);
   await mkdir(join(consumer, '.rc-stack'), { recursive: true });
-  await writeFile(join(consumer, STATE), JSON.stringify({ runId: record.runId, feedDir, entries, nugetConfig: { created: true, content: config } }, null, 2) + '\n');
-  return { runId: record.runId, changed: entries, skipped: [], noop: false };
+  await writeFile(join(consumer, STATE), JSON.stringify({ runId, ...state, entries, nugetConfig: { created: true, content: config } }, null, 2) + '\n');
+  return { runId, changed: entries, skipped: [], noop: false };
+}
+
+export async function use({ consumer, feedDir }) {
+  const record = await latestRecord(feedDir);
+  if (!record) throw new UseError(`no rc record in ${feedDir}: run rc first`);
+  const guard = await guardState({ consumer, origin: 'local', runId: record.runId });
+  if (guard.noop) return { runId: record.runId, changed: [], skipped: [], noop: true };
+  const config = nugetConfigFor({ key: 'rc-stack-local', value: feedDir, ids: record.packages.map((p) => p.id) });
+  return apply({ consumer, runId: record.runId, packages: record.packages, config, state: { origin: 'local', feedDir } });
+}
+
+export async function useRemote({ consumer, runId, manifest, env = process.env, listVersions = defaultListVersions }) {
+  const source = manifest.remote?.source;
+  if (!source) throw new UseError('the manifest has no remote.source');
+  if (!env.GITHUB_TOKEN) throw new UseError('GITHUB_TOKEN is not set');
+  const guard = await guardState({ consumer, origin: 'remote', runId });
+  if (guard.noop) return { runId, changed: [], skipped: [], noop: true };
+  const ids = [...new Set(manifest.repos.flatMap((r) => r.packages.map((p) => p.id)))];
+  const packages = [];
+  const missing = [];
+  for (const id of ids) {
+    const version = (await listVersions(source, id, env.GITHUB_TOKEN)).find((v) => v.endsWith(`-rc.${runId}`));
+    if (version) packages.push({ id, version });
+    else missing.push(id);
+  }
+  if (missing.length) throw new UseError(`run ${runId} is not complete on ${source}, missing: ${missing.join(', ')}`);
+  const owner = /^https:\/\/nuget\.pkg\.github\.com\/([^/]+)\//.exec(source)?.[1] ?? 'token';
+  const credentials = `  <packageSourceCredentials>\n    <rc-stack-remote>\n      <add key="Username" value="${owner}" />\n      <add key="ClearTextPassword" value="%GITHUB_TOKEN%" />\n    </rc-stack-remote>\n  </packageSourceCredentials>\n`;
+  const config = nugetConfigFor({ key: 'rc-stack-remote', value: source, ids, credentials });
+  return apply({ consumer, runId, packages, config, state: { origin: 'remote', source } });
 }
 
 export async function useStable({ consumer }) {
