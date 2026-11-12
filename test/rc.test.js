@@ -182,3 +182,58 @@ test('an allowlisted failure does not let the run through when a second test hos
   }
   assert.deepEqual(readdirSync(s.feed), []);
 });
+
+async function remoteSetup(opts) {
+  const { writeFileSync, symlinkSync, mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const s = makeStack(opts);
+  const root = mkdtempSync(join(tmpdir(), 'rcroot-'));
+  for (const [name, path] of Object.entries(s.repos)) symlinkSync(path, join(root, name));
+  const remote = mkdtempSync(join(tmpdir(), 'remote-'));
+  const m = JSON.parse(readFileSync(s.manifestPath, 'utf8'));
+  m.remote = { source: remote };
+  writeFileSync(s.manifestPath, JSON.stringify(m));
+  return { ...s, root, remote };
+}
+const remoteNupkgs = (dir) => readdirSync(dir, { recursive: true }).filter((f) => f.endsWith('.nupkg')).map((f) => f.split('/').pop()).sort();
+const ENV = { GITHUB_TOKEN: 'tok' };
+
+test('a remote run builds the repos under root, pushes every package to the remote source and leaves the local feed alone', async () => {
+  const s = await remoteSetup();
+  const rec = await rc({ manifestPath: s.manifestPath, now: NOW, published, origin: 'remote', root: s.root, env: ENV });
+  assert.deepEqual(remoteNupkgs(s.remote), ['LibA.1.0.1-rc.202611111530.nupkg', 'LibB.1.0.1-rc.202611111530.nupkg']);
+  assert.deepEqual(readdirSync(s.feed), []);
+  assert.equal(rec.origin, 'remote');
+  assert.deepEqual(JSON.parse(readFileSync(join(s.root, 'records', `${rec.runId}.json`), 'utf8')).packages.map((p) => p.id).sort(), ['LibA', 'LibB']);
+});
+
+test('a remote run without GITHUB_TOKEN stops with one line naming it, before anything is built', async () => {
+  const s = await remoteSetup();
+  await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published, origin: 'remote', root: s.root, env: {} }), (e) => /GITHUB_TOKEN/.test(e.message) && !e.message.includes('\n'));
+  assert.deepEqual(remoteNupkgs(s.remote), []);
+  assert.equal(git(s.repos.LibA, 'worktree', 'list').split('\n').length, 1);
+});
+
+test('a remote run needs a root and a manifest remote source', async () => {
+  const s = await remoteSetup();
+  await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published, origin: 'remote', env: ENV }), /root/);
+  const { writeFileSync } = await import('node:fs');
+  const m = JSON.parse(readFileSync(s.manifestPath, 'utf8'));
+  delete m.remote;
+  writeFileSync(s.manifestPath, JSON.stringify(m));
+  await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published, origin: 'remote', root: s.root, env: ENV }), /remote/);
+});
+
+test('an unexpected failing test in a remote run pushes nothing', async () => {
+  const s = await remoteSetup({ failingB: true });
+  await assert.rejects(() => rc({ manifestPath: s.manifestPath, now: NOW, published, origin: 'remote', root: s.root, env: ENV }), (e) => e.name === 'CommandError');
+  assert.deepEqual(remoteNupkgs(s.remote), []);
+});
+
+test('canBuild: any builds everywhere, windows only on a Windows host', async () => {
+  const { canBuild } = await import('../src/rc.js');
+  assert.equal(canBuild('any', 'darwin'), true);
+  assert.equal(canBuild('windows', 'darwin'), false);
+  assert.equal(canBuild('windows', 'win32'), true);
+  assert.equal(canBuild('any', 'win32'), true);
+});

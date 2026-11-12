@@ -9,7 +9,7 @@ import { drift, formatDrift } from './drift.js';
 import { bump } from './bump.js';
 
 const defaultManifest = join(dirname(fileURLToPath(import.meta.url)), '../stack.json');
-const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\n       stack drift [--json] [--manifest <file>]\n       stack bump <repo> [--sln <path>] [--allow-no-baseline] [--manifest <file>]';
+const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack rc --remote --root <folder> [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\n       stack drift [--json] [--manifest <file>]\n       stack bump <repo> [--sln <path>] [--allow-no-baseline] [--manifest <file>]';
 
 class UsageError extends Error {}
 
@@ -22,6 +22,8 @@ function parse(argv) {
     else if (a === '--local') out.local = true;
     else if (a === '--stable') out.stable = true;
     else if (a === '--json') out.json = true;
+    else if (a === '--remote') out.remote = true;
+    else if (a === '--root') out.root = resolve(argv[++i] ?? '');
     else if (a === '--sln') out.sln = argv[++i];
     else if (a === '--allow-no-baseline') out.allowNoBaseline = true;
     else if (a === '--ref') {
@@ -62,7 +64,8 @@ async function main(argv) {
     return;
   }
   if (command === 'rc') {
-    const record = await rc({ manifestPath, from: o.from, refs: o.refs, log: (s) => console.log(s) });
+    if (o.remote && !o.root) throw new UsageError('rc --remote needs --root <folder holding the repo checkouts>');
+    const record = await rc({ manifestPath, from: o.from, refs: o.refs, origin: o.remote ? 'remote' : 'local', root: o.root, log: (s) => console.log(s) });
     console.log(`rc ${record.runId}: ${record.packages.length} packages in the feed`);
     return;
   }

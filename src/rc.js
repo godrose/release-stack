@@ -7,6 +7,7 @@ import { loadManifest } from './manifest.js';
 import { buildGraph } from './graph.js';
 import { assertClean, createWorktree, removeWorktree, pruneWorktrees, currentRef } from './worktree.js';
 import { publishStaging, FeedConflictError } from './feed.js';
+import { pushPackages } from './remote.js';
 import { writeRecord, latestRecord, hasRecord } from './record.js';
 import { resolvePin } from './pins.js';
 import { AllowlistError, parseFailures, complete, evaluate } from './allowlist.js';
@@ -51,13 +52,25 @@ async function csprojFiles(dir) {
 
 export const buildArgs = (slnfRel, sources) => ['build', slnfRel, '-c', 'Release', `-p:RestoreAdditionalProjectSources=${sources.join('%3B')}`];
 
+export const canBuild = (platform, host) => platform === 'any' || (platform === 'windows' && host === 'win32');
+
 const globToRegex = (g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
 
 export async function rc(opts) {
   const log = opts.log ?? (() => {});
   const now = opts.now ?? new Date();
   const published = opts.published ?? publishedVersions;
-  const manifest = loadManifest(opts.manifestPath);
+  const env = opts.env ?? process.env;
+  const host = opts.hostPlatform ?? process.platform;
+  const remote = opts.origin === 'remote';
+  let manifest = loadManifest(opts.manifestPath);
+  if (remote) {
+    if (!opts.root) throw new Error('a remote run needs --root <folder holding the repo checkouts>');
+    if (!manifest.remote) throw new Error('the manifest has no remote.source for a remote run');
+    if (!env.GITHUB_TOKEN) throw new Error('GITHUB_TOKEN is not set');
+    manifest = { ...manifest, repos: manifest.repos.map((r) => ({ ...r, path: join(opts.root, r.name) })) };
+  }
+  const recordDir = remote ? opts.root : manifest.feed;
   const runId = runStamp(now);
   const expired = [];
   for (const repo of manifest.repos) {
@@ -66,7 +79,7 @@ export async function rc(opts) {
     for (const e of repo.knownFailing) if (!gone.includes(e)) log(`known failing: ${repo.name} ${e.test} (owner ${e.owner}, expires ${e.expires})`);
   }
   if (expired.length) throw new AllowlistError(expired);
-  if (await hasRecord(manifest.feed, runId)) throw new FeedConflictError([`records/${runId}.json`]);
+  if (await hasRecord(recordDir, runId)) throw new FeedConflictError([`records/${runId}.json`]);
 
   for (const repo of manifest.repos) await pruneWorktrees(repo.path);
   const work = await mkdtemp(join(tmpdir(), `rc-stack-${runId}-`));
@@ -85,7 +98,7 @@ export async function rc(opts) {
     const refs = new Map();
     for (const repo of manifest.repos) {
       const ids = new Set();
-      for (const pkg of repo.packages.filter((p) => p.platform === 'any')) {
+      for (const pkg of repo.packages.filter((p) => canBuild(p.platform, host))) {
         const file = join(trees.get(repo.name).path, pkg.project);
         if (!(await exists(file))) throw new Error(`${repo.name}: package ${pkg.id} project ${pkg.project} not found at ${trees.get(repo.name).ref}`);
         for (const r of listPackageRefs(await readFile(file, 'utf8'))) ids.add(r.id);
@@ -99,11 +112,11 @@ export async function rc(opts) {
       if (!graph.order.includes(opts.from)) throw new Error(`--from ${opts.from}: no such repo in the manifest`);
       selected = [opts.from, ...graph.dependents(opts.from)];
     }
-    const toBuild = manifest.repos.filter((r) => selected.includes(r.name) && r.platform === 'any');
-    for (const r of manifest.repos) if (selected.includes(r.name) && r.platform !== 'any') log(`skipping ${r.name}: needs ${r.platform}`);
+    const toBuild = manifest.repos.filter((r) => selected.includes(r.name) && canBuild(r.platform, host));
+    for (const r of manifest.repos) if (selected.includes(r.name) && !canBuild(r.platform, host)) log(`skipping ${r.name}: needs ${r.platform}`);
     for (const r of toBuild) await assertClean(r.path);
 
-    const latest = await latestRecord(manifest.feed);
+    const latest = remote ? null : await latestRecord(manifest.feed);
     const idOwner = new Map();
     for (const r of manifest.repos) for (const p of r.packages) idOwner.set(p.id, r);
     const rebuilt = new Map();
@@ -111,11 +124,11 @@ export async function rc(opts) {
     const packed = [];
     const repoRecords = [];
     const sources = [staging];
-    if (await exists(manifest.feed)) sources.push(manifest.feed);
+    if (!remote && (await exists(manifest.feed))) sources.push(manifest.feed);
 
     for (const repo of toBuild) {
       const wt = trees.get(repo.name);
-      const buildPackages = repo.packages.filter((p) => p.platform === 'any');
+      const buildPackages = repo.packages.filter((p) => canBuild(p.platform, host));
       const localVersion = getProjectVersion(await readFile(join(wt.path, buildPackages[0].project), 'utf8'));
       const all = (await Promise.all(buildPackages.map((p) => published(p.id)))).flat();
       const version = rcVersion(nextStable(localVersion, all), now);
@@ -197,10 +210,11 @@ export async function rc(opts) {
       repoRecords.push({ name: repo.name, ref: wt.ref, sha: wt.sha, treeHash: wt.treeHash, version, rebuilt: true, upstream, projects: projects.sort((a, b) => (a.file < b.file ? -1 : 1)) });
     }
 
-    await publishStaging(staging, manifest.feed);
+    if (remote) await pushPackages(staging, manifest.remote.source, env.GITHUB_TOKEN);
+    else await publishStaging(staging, manifest.feed);
     const carried = (latest?.packages ?? []).filter((p) => idOwner.has(p.id) && !rebuilt.has(idOwner.get(p.id).name));
-    const record = { runId, createdAt: now.toISOString(), origin: 'local', repos: repoRecords, packages: [...packed, ...carried] };
-    await writeRecord(manifest.feed, record);
+    const record = { runId, createdAt: now.toISOString(), origin: remote ? 'remote' : 'local', repos: repoRecords, packages: [...packed, ...carried] };
+    await writeRecord(recordDir, record);
     return record;
   } finally {
     if (process.env.RC_STACK_KEEP) {
