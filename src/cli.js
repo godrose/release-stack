@@ -7,9 +7,10 @@ import { rc } from './rc.js';
 import { use, useStable, useRemote } from './use.js';
 import { drift, formatDrift } from './drift.js';
 import { bump } from './bump.js';
+import { checkout } from './checkout.js';
 
 const defaultManifest = join(dirname(fileURLToPath(import.meta.url)), '../stack.json');
-const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack rc --remote --root <folder> [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\\n       stack use --remote <run-id> <consumer> [--manifest <file>]\n       stack drift [--json] [--manifest <file>]\n       stack bump <repo> [--sln <path>] [--allow-no-baseline] [--manifest <file>]';
+const USAGE = 'usage: stack rc [--from <repo>] [--ref <repo>=<ref>]... [--manifest <file>]\n       stack rc --remote --root <folder> [--ref <repo>=<ref>]... [--manifest <file>]\n       stack use --local <consumer> [--manifest <file>]\n       stack use --stable <consumer>\\n       stack use --remote <run-id> <consumer> [--manifest <file>]\n       stack drift [--json] [--manifest <file>]\n       stack checkout --root <folder> [--ref <repo>=<ref>]... [--manifest <file>]\n       stack bump <repo> [--sln <path>] [--allow-no-baseline] [--manifest <file>]';
 
 class UsageError extends Error {}
 
@@ -38,12 +39,17 @@ function parse(argv) {
 
 async function main(argv) {
   const [command, ...rest] = argv;
-  if (!(['rc', 'use', 'drift', 'bump'].includes(command))) throw new UsageError(USAGE);
+  if (!(['rc', 'use', 'drift', 'bump', 'checkout'].includes(command))) throw new UsageError(USAGE);
   const o = parse(rest);
   const manifestPath = o.manifest ?? defaultManifest;
   if (command === 'drift') {
     const result = await drift({ manifestPath });
     console.log(o.json ? JSON.stringify(result, null, 2) : formatDrift(result));
+    return;
+  }
+  if (command === 'checkout') {
+    if (!o.root) throw new UsageError('checkout needs --root <folder>\n' + USAGE);
+    for (const r of await checkout({ manifestPath, root: o.root, refs: o.refs })) console.log(`${r.name} ${r.ref} ${r.sha}`);
     return;
   }
   if (command === 'bump') {

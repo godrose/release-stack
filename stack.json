@@ -18,6 +18,7 @@
   "repos": [
     {
       "name": "Solid",
+      "git": "https://github.com/godrose/Solid.git",
       "path": "~/Workspace/Solid",
       "platform": "any",
       "solution": "src/Solid.sln",
@@ -225,6 +226,7 @@
     },
     {
       "name": "Attest",
+      "git": "https://github.com/godrose/Attest.git",
       "path": "~/Workspace/Attest",
       "platform": "any",
       "solution": "src/Attest.sln",
@@ -414,7 +416,7 @@
           "lib": [
             {
               "dir": "src/Bin/netframework/Release",
-              "tfm": "net462",
+              "tfm": "net461",
               "glob": "LogoFX.Client.Core.Platform.*"
             },
             {
@@ -474,7 +476,7 @@
           "lib": [
             {
               "dir": "src/Bin/netframework/Release",
-              "tfm": "net462",
+              "tfm": "net461",
               "glob": "LogoFX.Client.Theming.*"
             },
             {
@@ -560,7 +562,7 @@
           "lib": [
             {
               "dir": "src/Bin/netframework/Release",
-              "tfm": "net462",
+              "tfm": "net461",
               "glob": "LogoFX.Client.Testing.EndToEnd.White.*"
             },
             {
@@ -675,17 +677,17 @@
           "lib": [
             {
               "dir": "src/Bin/netframework/Release",
-              "tfm": "net462",
+              "tfm": "net461",
               "glob": "LogoFX.Client.Testing.Shared.Caliburn.Micro.*"
             },
             {
               "dir": "src/Bin/netframework/Release",
-              "tfm": "net462",
+              "tfm": "net461",
               "glob": "Caliburn.Micro.*"
             },
             {
               "dir": "src/Bin/netframework/Release",
-              "tfm": "net462",
+              "tfm": "net461",
               "glob": "System.Windows.Interactivity.*"
             },
             {

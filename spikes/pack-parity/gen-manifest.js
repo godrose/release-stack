@@ -31,7 +31,7 @@ for (const r of repos) {
       if (v.verdict === 'blocked') p.platform = 'windows';
       return p;
     });
-  manifest.repos.push({ name: r.name, path: `~/Workspace/${r.name}`, platform: 'any', solution: r.solution, tests, packages });
+  manifest.repos.push({ name: r.name, git: `https://github.com/godrose/${r.name}.git`, path: `~/Workspace/${r.name}`, platform: 'any', solution: r.solution, tests, packages });
 }
 function logofx(name, path, git) {
   const root = join(homedir(), 'Workspace/logofx-project', path);
