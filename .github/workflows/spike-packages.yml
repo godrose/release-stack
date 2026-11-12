@@ -1,0 +1,26 @@
+name: spike-packages
+on: workflow_dispatch
+permissions:
+  contents: read
+  packages: write
+jobs:
+  push:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Pack and push a tiny package
+        shell: pwsh
+        run: |
+          $v = "0.0.${{ github.run_number }}"
+          New-Item -ItemType Directory spike | Out-Null
+          Set-Location spike
+          @"
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup><TargetFramework>netstandard2.0</TargetFramework><PackageId>Spike.Pack</PackageId><Version>$v</Version></PropertyGroup>
+          </Project>
+          "@ | Set-Content Spike.Pack.csproj
+          "namespace Spike { public class A {} }" | Set-Content A.cs
+          dotnet pack -c Release -o out
+          dotnet nuget push "out/Spike.Pack.$v.nupkg" -s https://nuget.pkg.github.com/godrose/index.json -k ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
